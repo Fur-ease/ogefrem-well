@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ShipmentStatus {
+  NEW
+  FERI_ADDED
+  PAID
+  AD_GENERATED
+  COMPLETED
+}
+
+enum DocumentType {
+  BL
+  PACKING_LIST
+  COMMERCIAL_INVOICE
+  DRAFT_FERI
+  PROFORMA
+  POP
+  AD
+  FACTURE
+  FINAL_FERI
+  TIO
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHIPMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Shipment {
+  id        String         @id @default(cuid())
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  // Core identity
+  clientName String
+  blNumber   String        @unique
+
+  // Step 1 — NEW
+  status         ShipmentStatus @default(NEW)
+  isFeriSkipped  Boolean        @default(false)
+
+  // Step 2 — FERI_ADDED
+  feriNumber        String?
+  proformaNumber    String?
+  proformaAmountEUR Decimal? @db.Decimal(18, 4)
+  commissionEUR     Decimal? @db.Decimal(18, 4)
+
+  // Step 3 — PAID
+  exchangeRate      Decimal? @db.Decimal(18, 6)
+
+  // Step 4 — AD_GENERATED
+  adAmountUSD  Decimal? @db.Decimal(18, 4)
+  tioNumber    String?
+
+  // ── Computed & Stored Financial Results ──────────────────────────────────
+  // Stored on PAID step
+  ferriUSD     Decimal? @db.Decimal(18, 2)
+  commUSD      Decimal? @db.Decimal(18, 2)
+
+  // Stored on AD_GENERATED step
+  totalUSD     Decimal? @db.Decimal(18, 2)
+  wellRevenue  Decimal? @db.Decimal(18, 2)
+  musungoRevenue Decimal? @db.Decimal(18, 2)
+  ogefremRevenue Decimal? @db.Decimal(18, 2)
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  documents Document[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOCUMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Document {
+  id         String       @id @default(cuid())
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  shipmentId String
+  shipment   Shipment     @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  type        DocumentType
+  filename    String
+  driveFileId String
+  driveUrl    String
+
+  // Versioning for AD documents — v1, v2, etc.
+  version    Int          @default(1)
+
+  // Soft-replace: when an AD is replaced, old row is flagged
+  isReplaced Boolean      @default(false)
+
+  @@index([shipmentId])
+  @@index([shipmentId, type])
+}
