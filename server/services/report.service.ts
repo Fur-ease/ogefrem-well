@@ -241,16 +241,6 @@ export async function exportMonthlyDocx(month: string): Promise<Buffer> {
             {
                 children: [
                     new Paragraph({
-                        alignment: AlignmentType.RIGHT,
-                        children: [
-                            new ImageRun({
-                                data: qrBuffer as any,
-                                transformation: { width: 100, height: 100 },
-                                type: "png",
-                            } as any),
-                        ],
-                    }),
-                    new Paragraph({
                         heading: HeadingLevel.HEADING_1,
                         alignment: AlignmentType.CENTER,
                         children: [
@@ -287,17 +277,57 @@ export async function exportMonthlyDocx(month: string): Promise<Buffer> {
                             }),
                         ],
                     }),
+                    // ── Bottom codes section ──────────────────────────────
                     new Paragraph({ children: [new TextRun({ text: "" })] }),
+                    new Paragraph({ children: [new TextRun({ text: "" })] }),
+                    new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                            new TextRun({
+                                text: "QR Code — Proforma Numbers",
+                                size: 16,
+                                bold: true,
+                                font: "Calibri",
+                                color: "444444",
+                            }),
+                        ],
+                    }),
+                    new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                            new ImageRun({
+                                data: qrBuffer as any,
+                                transformation: { width: 120, height: 120 },
+                                type: "png",
+                            } as any),
+                        ],
+                    }),
+                    // spacer between QR and barcode
+                    new Paragraph({ children: [new TextRun({ text: "" })] }),
+                    new Paragraph({ children: [new TextRun({ text: "" })] }),
+                    new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                            new TextRun({
+                                text: "Report Barcode",
+                                size: 16,
+                                bold: true,
+                                font: "Calibri",
+                                color: "444444",
+                            }),
+                        ],
+                    }),
                     new Paragraph({
                         alignment: AlignmentType.CENTER,
                         children: [
                             new ImageRun({
                                 data: barcodeLabelBuffer as any,
-                                transformation: { width: 150, height: 40 },
+                                transformation: { width: 200, height: 50 },
                                 type: "png",
                             } as any),
                         ],
                     }),
+                    new Paragraph({ children: [new TextRun({ text: "" })] }),
                 ],
             },
         ],
