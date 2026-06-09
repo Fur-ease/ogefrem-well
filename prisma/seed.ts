@@ -4,24 +4,31 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = "faizghalib71@gmail.com";
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const usersToSeed = [
+    { email: "faizghalib71@gmail.com", username: "Faiz", pass: "Admin1234!", role: "ADMIN", department: "ADMIN" },
+    { email: "admin@ogefrem.com", username: "Admin", pass: "Admin1234!", role: "ADMIN", department: "ADMIN" },
+    { email: "well@ogefrem.com", username: "Well Staff", pass: "Well1234!", role: "USER", department: "WELL" },
+    { email: "ogefrem@ogefrem.com", username: "Ogefrem Staff", pass: "Ogefrem1234!", role: "USER", department: "OGEFREM" },
+  ];
 
-  if (existing) {
-    console.log("✅ Admin user already exists — skipping seed.");
-    return;
+  for (const u of usersToSeed) {
+    const existing = await prisma.user.findUnique({ where: { email: u.email } });
+    if (!existing) {
+      const hashedPassword = await bcrypt.hash(u.pass, 10);
+      await prisma.user.create({
+        data: {
+          email: u.email,
+          username: u.username,
+          password: hashedPassword,
+          role: u.role,
+          department: u.department,
+        },
+      });
+      console.log(`✅ Seeded user: ${u.email} | Dept: ${u.department}`);
+    } else {
+      console.log(`⚠️ User already exists: ${u.email}`);
+    }
   }
-
-  const hashedPassword = await bcrypt.hash("Admin1234!", 10);
-
-  const user = await prisma.user.create({
-    data: {
-      email,
-      username: "Admin",
-      password: hashedPassword,
-      role: "ADMIN",
-    },
-  });
 
   await prisma.shipment.createMany({
     data: [
@@ -61,10 +68,7 @@ async function main() {
     ],
   });
 
-  console.log("🌱 Seeded admin user:");
-  console.log(`   Email:    ${user.email}`);
-  console.log(`   Password: Admin1234!`);
-  console.log(`   Role:     ${user.role}`);
+  console.log("🌱 Seeded users successfully.");
 }
 
 main()

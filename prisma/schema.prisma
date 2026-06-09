@@ -129,15 +129,18 @@ model Document {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  username  String
-  password  String
-  role      String   @default("ADMIN") // Basic role
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  resetTokens ResetToken[]
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String
+  password    String
+  role        String   @default("ADMIN")       // "ADMIN" | "USER"
+  department  String   @default("ADMIN")       // "ADMIN" | "WELL" | "OGEFREM"
+  isSuspended Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resetTokens  ResetToken[]
+  activityLogs ActivityLog[]
 }
 
 model ResetToken {
@@ -150,4 +153,113 @@ model ResetToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action    String   // e.g. "CREATED_WELL_SHIPMENT", "UPDATED_STATUS"
+  entity    String   // e.g. "WellShipment", "User"
+  entityId  String?
+  detail    String?  // JSON string with extra info
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum WellShipmentStatus {
+  AVA       // Shipment created — awaiting documents
+  FUP       // Documents received — follow-up in progress
+  FURO      // Released — payment received
+  PCHARGES  // Port charges — moved to Finance, off daily cargo
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — SHIPMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellShipment {
+  id        String              @id @default(cuid())
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  // Auto-assigned incremental reference: WELL/1751, WELL/1752, …
+  refNumber String              @unique
+
+  // Core identity (entered at creation)
+  clientName      String
+  clientRef       String?       // Client reference (e.g. 25S600032 189)
+  blNumber        String
+  containerSize   String        // e.g. 1X20, 3X20, 1X40
+  vesselName      String?
+  eta             DateTime?
+
+  // Status workflow: AVA → FUP → FURO → PCHARGES
+  status          WellShipmentStatus @default(AVA)
+
+  // Customs & logistics tracking (daily cargo columns)
+  docRecv         String?       // e.g. "11/2 COPIES"
+  lodgeCustoms    DateTime?
+  entryNumber     String?
+  entryPassed     DateTime?
+  tblNtbl         String?       // TBL / N.TBL
+  slineCharges    DateTime?
+  slinePaid       DateTime?
+  ddRecv          DateTime?
+  lastSlingCfs    String?
+  lodgedKpa       DateTime?
+  dateVerified    DateTime?
+
+  // Finance
+  isPaid          Boolean       @default(false)
+  paidAt          DateTime?
+  amount          Decimal?      @db.Decimal(18, 2)
+
+  notes           String?
+
+  documents       WellDocument[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — DOCUMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellDocument {
+  id           String       @id @default(cuid())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  shipmentId   String
+  shipment     WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  filename     String
+  driveFileId  String
+  driveUrl     String
+  docType      String       // free-text label: "BL", "PACKING LIST", "INVOICE", etc.
+
+  @@index([shipmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — REF COUNTER (auto-increment reference number)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellRefCounter {
+  id      Int @id @default(1)
+  lastRef Int @default(1750) // next new shipment gets 1751
 }

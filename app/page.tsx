@@ -5,8 +5,10 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ShipmentStatus } from "@prisma/client";
 import { format } from "date-fns";
 import { Decimal } from "@prisma/client/runtime/library";
-import { Plus, ArrowRight, Search, Ship, BarChart3, Filter, X, FileDigit } from "lucide-react";
-
+import { Plus, ArrowRight, Search, Ship, BarChart3, Filter, X, FileDigit, Banknote, BanknoteArrowUpIcon, ArrowBigUpDashIcon, ArrowUp01, ArrowUp, TrendingUp } from "lucide-react";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 interface SearchParams {
   status?: string;
@@ -25,6 +27,11 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.department === "WELL") {
+    redirect("/well");
+  }
+
   const { status: statusFilter, month: monthFilter, q: searchQuery, page } = await searchParams;
   const pageNum = parseInt(page || "1") || 1;
   const pageSize = 10;
@@ -100,8 +107,8 @@ export default async function DashboardPage({
         {[
           { label: "Total Shipments", value: stats.total, color: "hsl(var(--primary))", icon: <Ship size={16} /> },
           { label: "Completed", value: stats.completed, color: "hsl(var(--success))", icon: <BarChart3 size={16} /> },
-          { label: "Total Amount Paid", value: stats.totalAmountPaid, color: "hsl(var(--warning))", icon: <FileDigit size={16} /> },
-          { label: "Well Revenue", value: stats.wellRevenue, color: "hsl(var(--info))", icon: <BarChart3 size={16} /> },
+          { label: "Total Amount Paid", value: stats.totalAmountPaid, color: "hsl(var(--warning))", icon: <Banknote size={16} /> },
+          { label: "Well Revenue", value: stats.wellRevenue, color: "hsl(var(--info))", icon: <TrendingUp size={16} /> },
         ].map((s) => (
           <div key={s.label} className="stat-card">
             <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "hsl(var(--text-muted))", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>

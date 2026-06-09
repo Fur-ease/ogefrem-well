@@ -26,6 +26,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials");
         }
 
+        if (user.isSuspended) {
+          throw new Error("Account is suspended.");
+        }
+
         const isCorrectPassword = await bcrypt.compare(
           credentials.password,
           user.password
@@ -40,6 +44,7 @@ export const authOptions: NextAuthOptions = {
           name: user.username,
           email: user.email,
           role: user.role,
+          department: user.department,
         };
       },
     }),
@@ -49,6 +54,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.department = user.department;
       }
       if (trigger === "update" && session?.name) {
         token.name = session.name;
@@ -59,6 +65,7 @@ export const authOptions: NextAuthOptions = {
       if (token) {
         session.user.role = token.role;
         session.user.id = token.id;
+        session.user.department = token.department;
       }
       return session;
     },

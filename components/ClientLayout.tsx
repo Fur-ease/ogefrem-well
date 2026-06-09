@@ -18,7 +18,9 @@ import {
   Menu,
   Moon,
   Sun,
-  X
+  X,
+  Ship,
+  FileDigitIcon
 } from "lucide-react";
 
 interface NavLinkProps {
@@ -114,6 +116,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           background: "hsl(var(--sidebar-bg))",
           borderRight: "1px solid hsl(var(--sidebar-border))",
           display: "flex",
+          overflowY: "auto",
           flexDirection: "column",
           padding: "0",
           position: "fixed",
@@ -128,14 +131,17 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         <div
           onClick={() => isCollapsed && !isMobile && setIsCollapsed(false)}
           style={{
-            height: "80px",
+            height: "64px",
             display: "flex",
             alignItems: "center",
             padding: "0 0.75rem",
             justifyContent: isCollapsed && !isMobile ? "center" : "flex-start",
             borderBottom: "1px solid hsl(var(--sidebar-border))",
             overflow: "hidden",
-            position: "relative",
+            position: "sticky",
+            top: 0,
+            zIndex: 20,
+            backgroundColor: "hsl(var(--sidebar-bg))",
             gap: "0.25rem",
             cursor: isCollapsed && !isMobile ? "pointer" : "default"
           }}
@@ -164,73 +170,108 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           )}
-
-          {!isMobile && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCollapsed(!isCollapsed);
-              }}
-              className="btn-ghost"
-              style={{
-                marginLeft: isCollapsed ? "0" : "auto",
-                width: "24px",
-                height: "24px",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: "4px",
-                color: "hsl(var(--text-muted))",
-                background: isCollapsed ? "hsl(var(--surface))" : "transparent",
-                border: isCollapsed ? "1px solid hsl(var(--sidebar-border))" : "none",
-                position: isCollapsed ? "absolute" : "relative",
-                right: isCollapsed ? "-12px" : "0",
-                zIndex: 10,
-                boxShadow: isCollapsed ? "0 2px 4px rgba(0,0,0,0.1)" : "none"
-              }}
-            >
-              <div style={{ transform: isCollapsed ? "rotate(180deg)" : "none", transition: "transform 0.3s" }}>
-                <ChevronLeft size={14} />
-              </div>
-            </button>
-          )}
         </div>
 
         {/* Nav Links */}
         <nav style={{ padding: "1rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.25rem", flex: 1 }}>
-          <NavLink
-            href="/"
-            icon={<LayoutDashboard size={20} />}
-            label="Dashboard"
-            isCollapsed={isCollapsed && !isMobile}
-            isActive={pathname === "/"}
-            onClick={() => isMobile && setIsMobileMenuOpen(false)}
-          />
-          {/* <NavLink
-            href="/shipments/new"
-            icon={<PlusCircle size={20} />}
-            label="New Shipment"
-            isCollapsed={isCollapsed && !isMobile}
-            isActive={pathname === "/shipments/new"}
-            onClick={() => isMobile && setIsMobileMenuOpen(false)}
-          /> */}
-          <NavLink
-            href="/reports"
-            icon={<BarChart3 size={20} />}
-            label="Reports"
-            isCollapsed={isCollapsed && !isMobile}
-            isActive={pathname === "/reports"}
-            onClick={() => isMobile && setIsMobileMenuOpen(false)}
-          />
-          <NavLink
-            href="/analytics"
-            icon={<BarChart3 size={20} />}
-            label="Analytics"
-            isCollapsed={isCollapsed && !isMobile}
-            isActive={pathname === "/analytics"}
-            onClick={() => isMobile && setIsMobileMenuOpen(false)}
-          />
+
+          {/* OGEFREM Section */}
+          {(session?.user?.department === "OGEFREM" || session?.user?.department === "ADMIN") && (
+            <>
+              {session?.user?.department === "ADMIN" && (
+                <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "hsl(var(--text-muted))", padding: "0.5rem 0.75rem", marginTop: "0.5rem", letterSpacing: "0.05em" }}>OGEFREM</div>
+              )}
+              <NavLink
+                href="/"
+                icon={<LayoutDashboard size={20} />}
+                label="Dashboard"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
+                href="/reports"
+                icon={<FileDigitIcon size={20} />}
+                label="Reports"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/reports"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
+                href="/analytics"
+                icon={<BarChart3 size={20} />}
+                label="Analytics"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/analytics"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+            </>
+          )}
+
+          {/* WELL Section */}
+          {(session?.user?.department === "WELL" || session?.user?.department === "ADMIN") && (
+            <>
+              {session?.user?.department === "ADMIN" && (
+                <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "hsl(var(--text-muted))", padding: "0.5rem 0.75rem", marginTop: "0.5rem", letterSpacing: "0.05em" }}>WELL LOGISTICS</div>
+              )}
+              <NavLink
+                href="/well"
+                icon={<LayoutDashboard size={20} />}
+                label="WELL Dashboard"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/well"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
+                href="/well/cargo"
+                icon={<BarChart3 size={20} />}
+                label="Daily Cargo"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/well/cargo"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
+                href="/well/finance"
+                icon={<BarChart3 size={20} />}
+                label="Finance"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/well/finance"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
+                href="/well/analytics"
+                icon={<BarChart3 size={20} />}
+                label="WELL Analytics"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/well/analytics"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+            </>
+          )}
+
+          {/* ADMIN Section */}
+          {session?.user?.role === "ADMIN" && (
+            <>
+              <div style={{ margin: "1rem 0", borderBottom: "1px solid hsl(217, 25%, 18%)" }} />
+              <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "hsl(var(--text-muted))", padding: "0.5rem 0.75rem", letterSpacing: "0.05em" }}>ADMINISTRATION</div>
+              <NavLink
+                href="/admin/users"
+                icon={<User size={20} />}
+                label="User Management"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/admin/users"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
+                href="/admin/activity"
+                icon={<LayoutDashboard size={20} />}
+                label="Activity Logs"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/admin/activity"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+            </>
+          )}
 
           <div style={{ margin: "1rem 0", borderBottom: "1px solid hsl(217, 25%, 18%)" }} />
 
@@ -311,10 +352,18 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            {isMobile && (
+            {isMobile ? (
               <button
                 className="btn-ghost"
                 onClick={() => setIsMobileMenuOpen(true)}
+                style={{ padding: "0.5rem" }}
+              >
+                <Menu size={24} />
+              </button>
+            ) : (
+              <button
+                className="btn-ghost"
+                onClick={() => setIsCollapsed(!isCollapsed)}
                 style={{ padding: "0.5rem" }}
               >
                 <Menu size={24} />
