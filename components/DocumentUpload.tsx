@@ -26,7 +26,7 @@ const DOC_LABELS: Record<DocumentType, string> = {
 
 export function DocumentUpload({ shipmentId, allowedTypes, onSuccess }: Props) {
     const [type, setType] = useState<DocumentType>(allowedTypes[0]);
-    const [file, setFile] = useState<File | null>(null);
+    const [files, setFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -39,13 +39,13 @@ export function DocumentUpload({ shipmentId, allowedTypes, onSuccess }: Props) {
 
     async function handleUpload(e: React.FormEvent) {
         e.preventDefault();
-        if (!file) return;
+        if (files.length === 0) return;
 
         setUploading(true);
-        const tId = toast.loading(`Uploading ${DOC_LABELS[type]}...`);
+        const tId = toast.loading(files.length > 1 ? `Uploading ${files.length} files...` : `Uploading ${DOC_LABELS[type]}...`);
 
         const formData = new FormData();
-        formData.append("file", file);
+        files.forEach(f => formData.append("file", f));
         formData.append("type", type);
 
         try {
@@ -58,8 +58,8 @@ export function DocumentUpload({ shipmentId, allowedTypes, onSuccess }: Props) {
             if (!res.ok) {
                 toast.error(json.error || "Upload failed", { id: tId });
             } else {
-                toast.success(`${DOC_LABELS[type]} uploaded successfully`, { id: tId });
-                setFile(null);
+                toast.success(files.length > 1 ? `${files.length} documents uploaded successfully` : `${DOC_LABELS[type]} uploaded successfully`, { id: tId });
+                setFiles([]);
                 if (fileRef.current) fileRef.current.value = "";
                 onSuccess?.();
             }
@@ -86,29 +86,43 @@ export function DocumentUpload({ shipmentId, allowedTypes, onSuccess }: Props) {
             </div>
 
             <div className="form-group">
-                <label htmlFor="doc-file">File</label>
+                <label htmlFor="doc-files">Select Files {type === DocumentType.AD && "(Bulk upload supported)"}</label>
                 <input
-                    id="doc-file"
+                    id="doc-files"
                     ref={fileRef}
                     type="file"
+                    multiple
                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    onChange={(e) => setFiles(Array.from(e.target.files || []))}
                     style={{ cursor: "pointer" }}
                 />
             </div>
 
+            {files.length > 0 && (
+                <div style={{ marginBottom: "0.5rem" }}>
+                    <div style={{ fontSize: "0.75rem", color: "hsl(var(--text-muted))", marginBottom: "0.25rem" }}>Selected:</div>
+                    <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: "0.8rem", color: "hsl(var(--info))", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                        {files.map((f, i) => (
+                            <li key={i} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                • {f.name}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
             <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!file || uploading}
-                style={{ alignSelf: "flex-start", opacity: !file || uploading ? 0.6 : 1, gap: "0.5rem" }}
+                disabled={files.length === 0 || uploading}
+                style={{ alignSelf: "flex-start", opacity: files.length === 0 || uploading ? 0.6 : 1, gap: "0.5rem" }}
             >
                 {uploading ? (
                     "Uploading…"
                 ) : (
                     <>
                         <FileUp size={16} />
-                        Upload Document
+                        Upload {files.length > 1 ? `${files.length} Files` : "Document"}
                     </>
                 )}
             </button>

@@ -14,6 +14,7 @@ import { ShipmentStatus, DocumentType } from "@prisma/client";
 export const createShipmentSchema = z.object({
     clientName: z.string().min(1, "Client name is required").max(200),
     blNumber: z.string().min(1, "BL number is required").max(100),
+    containerCount: z.coerce.number().int().positive("Container count must be at least 1").default(1),
 });
 
 /** Step 2 — Add Feri Number + Proforma */
@@ -40,7 +41,8 @@ export const markPaidSchema = z.object({
 export const addAdSchema = z.object({
     adAmountUSD: z
         .number()
-        .positive("AD amount must be positive"),
+        .positive("AD amount must be positive")
+        .optional(),
     tioNumber: z.string().min(1, "TIO number is required"),
 });
 

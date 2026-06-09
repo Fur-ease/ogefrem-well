@@ -20,8 +20,14 @@ import {
     AlignmentType,
     WidthType,
     BorderStyle,
+    ImageRun,
 } from "docx";
 import { format } from "date-fns";
+import ExcelJS from "exceljs";
+import QRCode from "qrcode";
+import bwipjs from "bwip-js";
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -210,10 +216,40 @@ export async function exportMonthlyDocx(month: string): Promise<Buffer> {
     const [year, mon] = month.split("-").map(Number);
     const monthLabel = format(new Date(year, mon - 1, 1), "MMMM yyyy");
 
+    // Generate Barcode/QR Code for DOCX
+    const proformaList = report.rows
+        .map(r => r.proforma)
+        .filter(p => p && p.trim().length > 0)
+        .join(", ");
+
+    const qrBuffer = await QRCode.toBuffer(proformaList || "No Proformas Found", {
+        margin: 1,
+        width: 200,
+    });
+
+    const barcodeLabelBuffer = await bwipjs.toBuffer({
+        bcid: 'code128',
+        text: `REPORT-${month}`,
+        scale: 2,
+        height: 8,
+        includetext: true,
+        textxalign: 'center',
+    });
+
     const doc = new DocxDocument({
         sections: [
             {
                 children: [
+                    new Paragraph({
+                        alignment: AlignmentType.RIGHT,
+                        children: [
+                            new ImageRun({
+                                data: qrBuffer as any,
+                                transformation: { width: 100, height: 100 },
+                                type: "png",
+                            } as any),
+                        ],
+                    }),
                     new Paragraph({
                         heading: HeadingLevel.HEADING_1,
                         alignment: AlignmentType.CENTER,
@@ -251,12 +287,133 @@ export async function exportMonthlyDocx(month: string): Promise<Buffer> {
                             }),
                         ],
                     }),
+                    new Paragraph({ children: [new TextRun({ text: "" })] }),
+                    new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                            new ImageRun({
+                                data: barcodeLabelBuffer as any,
+                                transformation: { width: 150, height: 40 },
+                                type: "png",
+                            } as any),
+                        ],
+                    }),
                 ],
             },
         ],
     });
 
     const buffer = await Packer.toBuffer(doc);
-    logger.info({ month, rows: report.rows.length }, "DOCX report exported");
+    logger.info({ month, rows: report.rows.length }, "DOCX report exported with barcode");
+    return buffer;
+}
+
+export async function exportMonthlyExcel(month: string): Promise<Buffer> {
+    const report = await getMonthlySummary(month);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Monthly Report");
+
+    // Default column widths
+    worksheet.columns = COLUMNS.map(c => ({ header: c, key: c, width: 15 }));
+
+    // Add header row style
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, size: 12 };
+    headerRow.alignment = { horizontal: "center", vertical: "middle" };
+    headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" }
+    };
+
+    // Add data rows
+    report.rows.forEach((r) => {
+        worksheet.addRow([
+            r.client,
+            r.date,
+            r.feri,
+            r.proforma,
+            r.ferriEUR,
+            r.curExc,
+            r.ferriUSD,
+            r.commEUR,
+            r.commUSD,
+            r.adUSD,
+            r.totalUSD,
+            r.wellRev,
+            r.ogefremRev,
+            r.musongo
+        ]);
+    });
+
+    // Add totals row
+    const totals = report.totals;
+    const totalRow = worksheet.addRow([
+        "TOTALS",
+        "",
+        "",
+        "",
+        totals.ferriEUR,
+        "",
+        totals.ferriUSD,
+        totals.commEUR,
+        totals.commUSD,
+        totals.adUSD,
+        totals.totalUSD,
+        totals.wellRev,
+        totals.ogefremRev,
+        totals.musongo
+    ]);
+    totalRow.font = { bold: true };
+    totalRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF5F5F5" }
+    };
+
+    // Format numbers
+    for (let i = 2; i <= report.rows.length + 2; i++) {
+        const row = worksheet.getRow(i);
+        [5, 7, 8, 9, 10, 11, 12, 13, 14].forEach(colIdx => {
+            row.getCell(colIdx).numFmt = "#,##0.00";
+        });
+        row.getCell(6).numFmt = "#,##0.0000"; // Exchange rate
+    }
+
+    // Proforma numbers for QR Code
+    const proformaList = report.rows
+        .map(r => r.proforma)
+        .filter(p => p && p.trim().length > 0)
+        .join(", ");
+
+    const qrText = proformaList || "No Proformas Found";
+
+    // Generate QR Code as data URL
+    const qrDataUrl = await QRCode.toDataURL(qrText, {
+        errorCorrectionLevel: 'M',
+        margin: 2,
+        width: 200
+    });
+
+    // Add QR Code to workbook
+    const imageId = workbook.addImage({
+        base64: qrDataUrl,
+        extension: 'png',
+    });
+
+    // Place QR code on the right side of the table
+    // Table has 14 columns (A to N). We'll place it starting at P1 (column 16)
+    worksheet.addImage(imageId, {
+        tl: { col: 15, row: 1 },
+        ext: { width: 180, height: 180 }
+    });
+
+    // Add a label for the QR code
+    worksheet.getCell('P1').value = "Proformas QR Code";
+    worksheet.getCell('P1').font = { bold: true };
+
+    const buffer = await workbook.xlsx.writeBuffer() as unknown as Buffer;
+    logger.info({ month, rows: report.rows.length }, "Excel report exported with QR code");
     return buffer;
 }

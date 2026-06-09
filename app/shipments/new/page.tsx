@@ -12,6 +12,7 @@ export default function NewShipmentPage() {
     const [form, setForm] = useState({
         clientName: "",
         blNumber: "",
+        containerCount: 1,
     });
 
     async function handleSubmit(e: React.FormEvent) {
@@ -60,7 +61,7 @@ export default function NewShipmentPage() {
                     />
                 </div>
 
-                <div className="form-group" style={{ marginBottom: "2rem" }}>
+                <div className="form-group" style={{ marginBottom: "1.25rem" }}>
                     <label htmlFor="blNumber">BL Number</label>
                     <input
                         id="blNumber"
@@ -69,6 +70,18 @@ export default function NewShipmentPage() {
                         value={form.blNumber}
                         onChange={(e) => setForm({ ...form, blNumber: e.target.value })}
                         placeholder="e.g. BL-123456789"
+                    />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: "2rem" }}>
+                    <label htmlFor="containerCount">Number of Containers</label>
+                    <input
+                        id="containerCount"
+                        type="number"
+                        min="1"
+                        required
+                        value={form.containerCount}
+                        onChange={(e) => setForm({ ...form, containerCount: parseInt(e.target.value) || 1 })}
                     />
                 </div>
 

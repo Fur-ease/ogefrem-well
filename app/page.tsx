@@ -12,6 +12,7 @@ interface SearchParams {
   status?: string;
   month?: string;
   q?: string;
+  page?: string;
 }
 
 function toNum(v: Decimal | null): string {
@@ -24,7 +25,10 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { status: statusFilter, month: monthFilter, q: searchQuery } = await searchParams;
+  const { status: statusFilter, month: monthFilter, q: searchQuery, page } = await searchParams;
+  const pageNum = parseInt(page || "1") || 1;
+  const pageSize = 10;
+
   const where: any = {};
   if (statusFilter) where.status = statusFilter as ShipmentStatus;
   if (monthFilter) {
@@ -39,11 +43,18 @@ export default async function DashboardPage({
     ];
   }
 
-  const shipments = await prisma.shipment.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: { documents: { where: { isReplaced: false } } },
-  });
+  const [shipments, totalCount] = await Promise.all([
+    prisma.shipment.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: { documents: { where: { isReplaced: false } } },
+      skip: (pageNum - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.shipment.count({ where })
+  ]);
+
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const aggregate = await prisma.shipment.aggregate({
     where,
@@ -54,10 +65,19 @@ export default async function DashboardPage({
   });
 
   const stats = {
-    total: await prisma.shipment.count({ where }),
+    total: totalCount,
     completed: await prisma.shipment.count({ where: { ...where, status: ShipmentStatus.COMPLETED } }),
     totalAmountPaid: toNum(aggregate._sum.totalUSD as Decimal | null),
     wellRevenue: toNum(aggregate._sum.wellRevenue as Decimal | null),
+  };
+
+  const createPageUrl = (p: number) => {
+    const params = new URLSearchParams();
+    if (statusFilter) params.set("status", statusFilter);
+    if (monthFilter) params.set("month", monthFilter);
+    if (searchQuery) params.set("q", searchQuery);
+    params.set("page", p.toString());
+    return `/?${params.toString()}`;
   };
 
   return (
@@ -67,7 +87,7 @@ export default async function DashboardPage({
         <div>
           <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.25rem", color: "hsl(var(--text-primary))" }}>Dashboard</h1>
           <p style={{ color: "hsl(var(--text-secondary))", fontSize: "0.9rem" }}>
-            {shipments.length} shipment{shipments.length !== 1 ? "s" : ""} matching filters
+            {totalCount} shipment{totalCount !== 1 ? "s" : ""} matching filters
           </p>
         </div>
         <Link href="/shipments/new" className="btn btn-primary btn-lg" style={{ gap: "0.5rem" }}>
@@ -136,6 +156,7 @@ export default async function DashboardPage({
                 <th>Client</th>
                 <th>BL Number</th>
                 <th>Feri</th>
+                <th>Containers</th>
                 <th>Status</th>
                 <th>Total USD</th>
                 <th>Docs</th>
@@ -146,7 +167,7 @@ export default async function DashboardPage({
             <tbody>
               {shipments.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: "3rem", color: "hsl(var(--text-muted))" }}>
+                  <td colSpan={9} style={{ textAlign: "center", padding: "3rem", color: "hsl(var(--text-muted))" }}>
                     No shipments found. <Link href="/shipments/new" style={{ textDecoration: "underline" }}>Create one</Link>
                   </td>
                 </tr>
@@ -158,6 +179,18 @@ export default async function DashboardPage({
                       {s.blNumber}
                     </td>
                     <td style={{ color: "hsl(var(--text-secondary))" }}>{s.feriNumber || "—"}</td>
+                    <td style={{ textAlign: "center" }}>
+                      <span style={{
+                        background: "hsl(var(--surface-3))",
+                        padding: "0.2rem 0.5rem",
+                        borderRadius: "0.25rem",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        color: "hsl(var(--text-primary))"
+                      }}>
+                        {s.containerCount}
+                      </span>
+                    </td>
                     <td><StatusBadge status={s.status} /></td>
                     <td style={{ fontWeight: 600, color: "hsl(var(--success))" }}>
                       {toNum(s.totalUSD)}
@@ -177,6 +210,38 @@ export default async function DashboardPage({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="pagination">
+            <div className="pagination-info">
+              Showing {(pageNum - 1) * pageSize + 1} to {Math.min(pageNum * pageSize, totalCount)} of {totalCount} entries
+            </div>
+            <Link
+              href={createPageUrl(pageNum - 1)}
+              className={`pagination-btn ${pageNum <= 1 ? "disabled" : ""}`}
+              style={{ pointerEvents: pageNum <= 1 ? "none" : "auto", opacity: pageNum <= 1 ? 0.5 : 1 }}
+            >
+              &laquo;
+            </Link>
+            {[...Array(totalPages)].map((_, i) => (
+              <Link
+                key={i}
+                href={createPageUrl(i + 1)}
+                className={`pagination-btn ${pageNum === i + 1 ? "active" : ""}`}
+              >
+                {i + 1}
+              </Link>
+            ))}
+            <Link
+              href={createPageUrl(pageNum + 1)}
+              className={`pagination-btn ${pageNum >= totalPages ? "disabled" : ""}`}
+              style={{ pointerEvents: pageNum >= totalPages ? "none" : "auto", opacity: pageNum >= totalPages ? 0.5 : 1 }}
+            >
+              &raquo;
+            </Link>
+          </div>
+        )}
       </div>
 
     </div>

@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
+import { useTheme } from "@/components/ThemeProvider";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -13,6 +16,8 @@ import {
   User,
   ChevronLeft,
   Menu,
+  Moon,
+  Sun,
   X
 } from "lucide-react";
 
@@ -21,14 +26,15 @@ interface NavLinkProps {
   icon: React.ReactNode;
   label: string;
   isCollapsed: boolean;
+  isActive: boolean;
   onClick?: () => void;
 }
 
-function NavLink({ href, icon, label, isCollapsed, onClick }: NavLinkProps) {
+function NavLink({ href, icon, label, isCollapsed, isActive, onClick }: NavLinkProps) {
   return (
     <Link
       href={href}
-      className="nav-link"
+      className={`nav-link ${isActive ? "active" : ""}`}
       onClick={onClick}
       style={{
         display: "flex",
@@ -51,9 +57,14 @@ function NavLink({ href, icon, label, isCollapsed, onClick }: NavLinkProps) {
 }
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession();
+  const { theme, toggleTheme } = useTheme();
+  const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  const isAuthPage = pathname === "/login" || pathname === "/forgot-password" || pathname?.startsWith("/reset-password");
 
   // Handle window resize for mobile detection
   useEffect(() => {
@@ -69,6 +80,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const sidebarWidth = isCollapsed ? "72px" : "240px";
+
+  if (isAuthPage) {
+    return (
+      <div style={{ minHeight: "100vh", background: "hsl(var(--background))" }}>
+        <main>{children}</main>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", position: "relative" }}>
@@ -88,11 +107,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside
+        className="no-print"
         style={{
           width: isMobile ? "240px" : sidebarWidth,
           flexShrink: 0,
-          background: "hsl(217, 33%, 9%)",
-          borderRight: "1px solid hsl(217, 25%, 18%)",
+          background: "hsl(var(--sidebar-bg))",
+          borderRight: "1px solid hsl(var(--sidebar-border))",
           display: "flex",
           flexDirection: "column",
           padding: "0",
@@ -106,66 +126,72 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       >
         {/* Logo Section */}
         <div
+          onClick={() => isCollapsed && !isMobile && setIsCollapsed(false)}
           style={{
-            height: "64px",
+            height: "80px",
             display: "flex",
             alignItems: "center",
-            padding: "0 0.75rem 0 1.25rem",
-            justifyContent: "space-between",
-            borderBottom: "1px solid hsl(217, 25%, 18%)",
+            padding: "0 0.75rem",
+            justifyContent: isCollapsed && !isMobile ? "center" : "flex-start",
+            borderBottom: "1px solid hsl(var(--sidebar-border))",
             overflow: "hidden",
             position: "relative",
+            gap: "0.25rem",
+            cursor: isCollapsed && !isMobile ? "pointer" : "default"
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <div
+          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: isCollapsed && !isMobile ? "40px" : "48px" }}>
+            <img
+              src="/logo1.png"
+              alt="OGEFREM"
               style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "6px",
-                backgroundColor: "hsl(var(--primary))",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 800,
-                fontSize: "12px",
-                color: "#fff",
-                flexShrink: 0,
+                height: isCollapsed && !isMobile ? "20px" : "30px",
+                width: "auto",
+                objectFit: "contain",
+                transition: "all 0.3s ease",
+                filter: theme === "dark" ? "drop-shadow(0 0 4px rgba(255,255,255,0.1))" : "none"
               }}
-            >
-              OW
-            </div>
-            {(!isCollapsed || isMobile) && (
-              <div style={{ whiteSpace: "nowrap", opacity: isCollapsed && !isMobile ? 0 : 1, transition: "opacity 0.2s" }}>
-                <div style={{ fontWeight: 700, fontSize: "0.875rem", color: "hsl(210,20%,96%)" }}>
-                  OGEFREM
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "hsl(213,94%,65%)", fontWeight: 600 }}>
-                  WELL
-                </div>
-              </div>
-            )}
+            />
           </div>
+
+          {(!isCollapsed || isMobile) && (
+            <div style={{ whiteSpace: "nowrap", opacity: isCollapsed && !isMobile ? 0 : 1, transition: "opacity 0.2s", marginLeft: "0.5rem" }}>
+              <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "hsl(var(--text-primary))", letterSpacing: "0.02em" }}>
+                OGEFREM
+              </div>
+              <div style={{ fontSize: "0.75rem", color: "hsl(var(--primary))", fontWeight: 700, letterSpacing: "0.05em" }}>
+                WELL OPS
+              </div>
+            </div>
+          )}
 
           {!isMobile && (
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCollapsed(!isCollapsed);
+              }}
               className="btn-ghost"
               style={{
-                width: "28px",
-                height: "28px",
+                marginLeft: isCollapsed ? "0" : "auto",
+                width: "24px",
+                height: "24px",
                 padding: 0,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                borderRadius: "6px",
+                borderRadius: "4px",
                 color: "hsl(var(--text-muted))",
-                border: "1px solid hsl(217, 25%, 18%)",
-                background: "hsl(217, 33%, 12%)",
+                background: isCollapsed ? "hsl(var(--surface))" : "transparent",
+                border: isCollapsed ? "1px solid hsl(var(--sidebar-border))" : "none",
+                position: isCollapsed ? "absolute" : "relative",
+                right: isCollapsed ? "-12px" : "0",
+                zIndex: 10,
+                boxShadow: isCollapsed ? "0 2px 4px rgba(0,0,0,0.1)" : "none"
               }}
             >
               <div style={{ transform: isCollapsed ? "rotate(180deg)" : "none", transition: "transform 0.3s" }}>
-                <ChevronLeft size={16} />
+                <ChevronLeft size={14} />
               </div>
             </button>
           )}
@@ -178,13 +204,15 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             icon={<LayoutDashboard size={20} />}
             label="Dashboard"
             isCollapsed={isCollapsed && !isMobile}
+            isActive={pathname === "/"}
             onClick={() => isMobile && setIsMobileMenuOpen(false)}
           />
-          {/* <NavLink 
-            href="/shipments/new" 
-            icon={<PlusCircle size={20} />} 
-            label="New Shipment" 
+          {/* <NavLink
+            href="/shipments/new"
+            icon={<PlusCircle size={20} />}
+            label="New Shipment"
             isCollapsed={isCollapsed && !isMobile}
+            isActive={pathname === "/shipments/new"}
             onClick={() => isMobile && setIsMobileMenuOpen(false)}
           /> */}
           <NavLink
@@ -192,13 +220,58 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             icon={<BarChart3 size={20} />}
             label="Reports"
             isCollapsed={isCollapsed && !isMobile}
+            isActive={pathname === "/reports"}
             onClick={() => isMobile && setIsMobileMenuOpen(false)}
           />
+          <NavLink
+            href="/analytics"
+            icon={<BarChart3 size={20} />}
+            label="Analytics"
+            isCollapsed={isCollapsed && !isMobile}
+            isActive={pathname === "/analytics"}
+            onClick={() => isMobile && setIsMobileMenuOpen(false)}
+          />
+
+          <div style={{ margin: "1rem 0", borderBottom: "1px solid hsl(217, 25%, 18%)" }} />
+
+          <NavLink
+            href="/profile"
+            icon={<Settings size={20} />}
+            label="Profile Setup"
+            isCollapsed={isCollapsed && !isMobile}
+            isActive={pathname === "/profile"}
+            onClick={() => isMobile && setIsMobileMenuOpen(false)}
+          />
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="nav-link"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: isCollapsed && !isMobile ? "0" : "0.75rem",
+              padding: "0.6rem 0.875rem",
+              borderRadius: "0.5rem",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              transition: "all 0.2s ease",
+              background: "transparent",
+              border: "none",
+              color: "hsl(var(--text-secondary))",
+              cursor: "pointer",
+              justifyContent: isCollapsed && !isMobile ? "center" : "flex-start",
+              width: "100%",
+              marginTop: "auto",
+            }}
+            title={isCollapsed && !isMobile ? "Log out" : ""}
+          >
+            <span style={{ display: "flex", alignItems: "center", color: "hsl(var(--destructive))" }}><LogOut size={20} /></span>
+            {!(isCollapsed && !isMobile) && <span style={{ color: "hsl(var(--destructive))" }}>Log out</span>}
+          </button>
         </nav>
 
-        <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid hsl(217,25%,18%)" }}>
+        <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid hsl(var(--sidebar-border))" }}>
           {(!isCollapsed || isMobile) ? (
-            <div style={{ fontSize: "0.7rem", color: "hsl(215,12%,40%)", lineHeight: 1.5 }}>
+            <div style={{ fontSize: "0.7rem", color: "hsl(var(--text-muted))", lineHeight: 1.5 }}>
               OGEFREM — WELL<br />
               Management v1.0
             </div>
@@ -211,17 +284,19 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Area */}
       <div
+        className="print-reset-margin"
         style={{
           marginLeft: isMobile ? "0" : sidebarWidth,
           flex: 1,
           display: "flex",
           flexDirection: "column",
           transition: "margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-          width: "100%",
+          minWidth: 0, // Critical for flex children to respect boundaries
         }}
       >
         {/* Global Header */}
         <header
+          className="no-print"
           style={{
             height: "64px",
             borderBottom: "1px solid hsl(var(--border))",
@@ -251,27 +326,56 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            {!isMobile && (
+            {/* {!isMobile && (
               <>
                 <button className="btn-ghost" style={{ padding: "0.5rem" }}><Search size={19} /></button>
                 <button className="btn-ghost" style={{ padding: "0.5rem" }}><Bell size={19} /></button>
-                <div style={{ width: "1px", height: "20px", backgroundColor: "hsl(var(--border))" }}></div>
+                <div style={{ width: "1px", height: "20px", backgroundColor: "hsl(var(--border))" }} />
               </>
-            )}
+            )} */}
+            {/* Theme Toggle — always visible */}
+            <button
+              className="theme-toggle"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+            <div style={{ width: "1px", height: "20px", backgroundColor: "hsl(var(--border))" }} />
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              {!isMobile && <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "hsl(var(--text-primary))" }}>Admin User</div>}
-              <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "hsl(var(--surface-2))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {!isMobile && <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "hsl(var(--text-primary))" }}>{session?.user?.name || "User"}</div>}
+              <Link href="/profile" style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "hsl(var(--primary))", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", color: "#fff", transition: "opacity 0.2s" }} className="hover:opacity-80">
                 <User size={16} />
-              </div>
+              </Link>
             </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main style={{ flex: 1, padding: isMobile ? "1.25rem" : "2rem" }}>
-          {children}
+        <main className="print-reset-padding" style={{ flex: 1, padding: isMobile ? "1.25rem" : "2rem", minWidth: 0 }}>
+          <div className="print-reset-max-width" style={{ maxWidth: "1400px", margin: "0 auto", width: "100%" }}>
+            {children}
+          </div>
         </main>
       </div>
+
+      <style jsx global>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          .print-reset-margin {
+            margin-left: 0 !important;
+          }
+          .print-reset-padding {
+            padding: 0 !important;
+          }
+          .print-reset-max-width {
+            max-width: none !important;
+            margin: 0 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

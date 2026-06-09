@@ -20,10 +20,10 @@ export async function POST(
     try {
         const { id } = await params;
         const formData = await req.formData();
-        const file = formData.get("file") as File | null;
+        const files = formData.getAll("file") as File[];
         const typeRaw = formData.get("type") as string | null;
 
-        if (!file || !typeRaw) {
+        if (files.length === 0 || !typeRaw) {
             return NextResponse.json(
                 { error: "Missing 'file' or 'type' in form data" },
                 { status: 400 }
@@ -38,7 +38,6 @@ export async function POST(
             );
         }
         const docType = typeResult.data;
-
         const shipment = await getShipmentById(id);
 
         if (!canUploadDocument(shipment.status, docType)) {
@@ -47,56 +46,55 @@ export async function POST(
             );
         }
 
-        // Determine AD version if applicable
-        let version = 1;
-        let finalFilename = file.name;
+        const uploadedDocs = [];
 
-        if (docType === DocumentType.AD) {
-            const existing = await prisma.document.findMany({
-                where: { shipmentId: id, type: DocumentType.AD },
-                orderBy: { version: "desc" },
-            });
-            if (existing.length > 0) {
-                version = existing[0].version + 1;
-                // Mark prior AD documents as replaced
-                await prisma.document.updateMany({
-                    where: { shipmentId: id, type: DocumentType.AD },
-                    data: { isReplaced: true },
-                });
-            }
-            const ext = file.name.split(".").pop() || "pdf";
-            const basePrefix = shipment.status === ShipmentStatus.COMPLETED ? "AMENDED_AD" : "AD";
-            finalFilename = buildVersionedFilename(basePrefix, version, ext);
-        }
-
-
-        // Ensure OneDrive folder exists
+        // Ensure OneDrive folder exists once
         const folderId = await ensureShipmentFolder(
             shipment.clientName,
             shipment.feriNumber || "NO_FERI",
             shipment.createdAt
         );
 
-        // Upload to OneDrive
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uploaded = await uploadFileToOneDrive(buffer, file.type || "application/octet-stream", finalFilename, folderId);
+        for (const file of files) {
+            let version = 1;
+            let finalFilename = file.name;
 
-        // Save document record
-        const doc = await prisma.document.create({
-            data: {
-                shipmentId: id,
-                type: docType,
-                filename: finalFilename,
-                driveFileId: uploaded.fileId,
-                driveUrl: uploaded.url,
-                version,
-                isReplaced: false,
-            },
-        });
+            // Naming & Version Logic
+            if (docType === DocumentType.AD) {
+                // If it's an AD, we no longer mark others as replaced by default to support multi-container
+                const existingCount = await prisma.document.count({
+                    where: { shipmentId: id, type: DocumentType.AD },
+                });
+                version = existingCount + 1;
+                
+                // Prefix filename with AD_ to keep it distinct
+                const ext = file.name.split(".").pop() || "pdf";
+                const basePrefix = shipment.status === ShipmentStatus.COMPLETED ? "AMENDED_AD" : "AD";
+                finalFilename = `${basePrefix}_${file.name}`;
+            }
 
+            // Upload to OneDrive
+            const buffer = Buffer.from(await file.arrayBuffer());
+            const uploaded = await uploadFileToOneDrive(buffer, file.type || "application/octet-stream", finalFilename, folderId);
 
-        logger.info({ docId: doc.id, shipmentId: id, type: docType, version }, "Document uploaded");
-        return NextResponse.json({ data: doc }, { status: 201 });
+            // Save document record
+            const doc = await prisma.document.create({
+                data: {
+                    shipmentId: id,
+                    type: docType,
+                    filename: finalFilename,
+                    driveFileId: uploaded.fileId,
+                    driveUrl: uploaded.url,
+                    version,
+                    isReplaced: false,
+                },
+            });
+
+            uploadedDocs.push(doc);
+            logger.info({ docId: doc.id, shipmentId: id, type: docType, version }, "Document part of bulk upload complete");
+        }
+
+        return NextResponse.json({ data: uploadedDocs }, { status: 201 });
     } catch (error) {
         const err = handleApiError(error);
         return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });

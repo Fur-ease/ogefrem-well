@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ClientLayout } from "@/components/ClientLayout";
+import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "OGEFREM — WELL Shipment Management",
@@ -20,10 +21,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <ClientLayout>
-          {children}
-        </ClientLayout>
-        <Toaster position="top-right" theme="dark" closeButton />
+        <Providers>
+          <ClientLayout>
+            {children}
+          </ClientLayout>
+        </Providers>
+        <Toaster position="top-right" theme="light" closeButton />
       </body>
     </html>
   );

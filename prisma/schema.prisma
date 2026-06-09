@@ -50,6 +50,7 @@ model Shipment {
 
   // Step 1 — NEW
   status         ShipmentStatus @default(NEW)
+  containerCount Int            @default(1)
   isFeriSkipped  Boolean        @default(false)
 
   // Step 2 — FERI_ADDED
@@ -75,6 +76,22 @@ model Shipment {
   wellRevenue  Decimal? @db.Decimal(18, 2)
   musungoRevenue Decimal? @db.Decimal(18, 2)
   ogefremRevenue Decimal? @db.Decimal(18, 2)
+
+  // ── Invoice Details ───────────────────────────────────────────────────────
+  invoiceNumber String?   @unique
+  invoiceDate   DateTime?
+  vesselName    String?
+  entryNumber   String?
+  roeKsh        Decimal? @db.Decimal(18, 4)
+  hsCode        String?  @default("0010.22.00")
+  preparedBy    String?
+
+  // ── TIMS Integration Details ──────────────────────────────────────────
+  cuInvoiceNumber String?
+  qrCodeUrl       String?
+  cuDateTime      DateTime?
+  cuSerialNumber  String?
+  customerPin     String?
 
   // ── Relations ─────────────────────────────────────────────────────────────
   documents Document[]
@@ -105,4 +122,32 @@ model Document {
 
   @@index([shipmentId])
   @@index([shipmentId, type])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTHENTICATION & USERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String
+  password  String
+  role      String   @default("ADMIN") // Basic role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  resetTokens ResetToken[]
+}
+
+model ResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

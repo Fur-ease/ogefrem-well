@@ -47,12 +47,21 @@ function toNumber(v: Decimal | null | undefined): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getShipmentById(id: string) {
-    const shipment = await prisma.shipment.findUnique({
-        where: { id },
-        include: { documents: { orderBy: { createdAt: "asc" } } },
-    });
+    // Using $queryRaw to fetch all columns (including new ones) without Prisma Client knowing about them
+    const shipments = await prisma.$queryRaw<any[]>`
+        SELECT * FROM "Shipment" WHERE id = ${id} LIMIT 1
+    `;
+    
+    const shipment = shipments[0];
     if (!shipment) throw new NotFoundError("Shipment");
-    return shipment;
+
+    // Fetch documents separately via standard Prisma (types are likely OK for existing model)
+    const documents = await prisma.document.findMany({
+        where: { shipmentId: id },
+        orderBy: { createdAt: "asc" }
+    });
+
+    return { ...shipment, documents };
 }
 
 export async function listShipments(filters: {
@@ -89,8 +98,9 @@ export async function createShipment(data: CreateShipmentInput) {
         data: {
             clientName: data.clientName,
             blNumber: data.blNumber,
+            containerCount: data.containerCount,
             status: ShipmentStatus.NEW,
-        },
+        } as any,
     });
 
     logger.info({ shipmentId: shipment.id }, "Shipment created");
@@ -105,12 +115,8 @@ export async function addFeriToShipment(id: string, data: AddFeriInput) {
     const shipment = await getShipmentById(id);
     assertStatus(shipment, ShipmentStatus.NEW);
 
-    // Verify Draft Feri and Proforma are uploaded
-    const hasDeri = shipment.documents.some(d => d.type === DocumentType.DRAFT_FERI);
-    const hasProforma = shipment.documents.some(d => d.type === DocumentType.PROFORMA);
-    if (!hasDeri || !hasProforma) {
-        throw new WorkflowError("Please upload 'Draft Feri' and 'Proforma' documents before proceeding.");
-    }
+    // Mandatory document checks removed per user request:
+    // Draft Feri and Proforma no longer required to proceed.
 
     const updated = await prisma.shipment.update({
         where: { id },
@@ -151,11 +157,8 @@ export async function markShipmentPaid(id: string, data: MarkPaidInput) {
     const shipment = await getShipmentById(id);
     assertStatus(shipment, ShipmentStatus.FERI_ADDED);
 
-    // Verify POP is uploaded
-    const hasPop = shipment.documents.some(d => d.type === DocumentType.POP);
-    if (!hasPop) {
-        throw new WorkflowError("Please upload the 'POP' (Proof of Payment) document before marking as paid.");
-    }
+    // Mandatory document checks removed per user request:
+    // POP no longer required to proceed.
 
     const proformaEUR = toNumber(shipment.proformaAmountEUR);
     const commEUR = toNumber(shipment.commissionEUR);
@@ -185,26 +188,36 @@ export async function markShipmentPaid(id: string, data: MarkPaidInput) {
 
 export async function addAdToShipment(id: string, data: AddAdInput) {
     const shipment = await getShipmentById(id);
-    assertStatus(shipment, ShipmentStatus.PAID);
+    
+    // Normally we expect PAID status. If FERI was skipped, we are in AD_GENERATED but need to finalize data.
+    const isSkippedAndUnfilled = (shipment as any).isFeriSkipped && shipment.adAmountUSD === null;
+    if (shipment.status !== ShipmentStatus.PAID && !isSkippedAndUnfilled) {
+        throw new WorkflowError(
+            `Shipment must be in status 'PAID' or 'AD_GENERATED' (if skipped) for this operation. Current: '${shipment.status}'`
+        );
+    }
 
     const proformaEUR = toNumber(shipment.proformaAmountEUR);
     const commEUR = toNumber(shipment.commissionEUR);
     const rate = toNumber(shipment.exchangeRate);
 
+    // Calculate AD Amount: $20 per container
+    const adAmountUSD = (shipment as any).containerCount * 20;
+
     // If FERI was skipped, we might not have proforma/rate.
-    // In that case, we just use the provided AD amount and let other fields be zero.
+    // In that case, we just use the calculated AD amount and let other fields be zero.
     const { ferriUSD, commUSD, totalUSD, wellRevenue, musungoRevenue, ogefremRevenue } =
         calculateFinancials({
             proformaAmountEUR: proformaEUR || 0,
             commissionEUR: commEUR || 0,
             exchangeRate: rate || 0,
-            adAmountUSD: data.adAmountUSD,
+            adAmountUSD: adAmountUSD,
         });
 
     const updated = await prisma.shipment.update({
         where: { id },
         data: {
-            adAmountUSD: data.adAmountUSD,
+            adAmountUSD: adAmountUSD,
             tioNumber: data.tioNumber,
             ferriUSD,
             commUSD,
@@ -261,9 +274,10 @@ export function canUploadDocument(
 ): boolean {
     // If shipment is completed, we still allow uploading technical documents (Step 4 docs)
     // for amendments or fixing mistakes.
+    // If shipment is completed, we allow uploading ALL document types
+    // for amendments, fixing mistakes, or late uploads as requested.
     if (shipmentStatus === ShipmentStatus.COMPLETED) {
-        const step4Docs = ["AD", "FACTURE", "FINAL_FERI", "TIO", "POP"];
-        if (step4Docs.includes(docType)) return true;
+        return true;
     }
 
     // Special case for skipped FERI: allow POP in AD_GENERATED
