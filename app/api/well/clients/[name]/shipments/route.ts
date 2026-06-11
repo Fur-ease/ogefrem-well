@@ -5,7 +5,7 @@ import { getShipmentsByClient } from "@/server/well/well-shipment.service";
 
 export async function GET(
     request: Request,
-    { params }: { params: { name: string } }
+    { params }: { params: Promise<{ name: string }> }
 ) {
     const session = await getServerSession(authOptions);
     if (!session || (session.user.department !== "WELL" && session.user.department !== "ADMIN")) {
@@ -13,7 +13,7 @@ export async function GET(
     }
 
     try {
-        const { name } = params;
+        const { name } = await params;
         const shipments = await getShipmentsByClient(decodeURIComponent(name));
         return NextResponse.json(shipments);
     } catch (error: any) {
