@@ -3,6 +3,8 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Plus, ArrowRight, Anchor, FileCheck, CheckCircle, PackageSearch, BarChart3 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function WellDashboardPage() {
     const stats = await prisma.$transaction([
         prisma.wellShipment.count(),
