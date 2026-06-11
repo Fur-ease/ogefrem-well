@@ -81,8 +81,10 @@ export async function updateWellShipment(id: string, data: any) {
         "slinePaid", "ddRecv", "lodgedKpa", "dateVerified"
     ];
 
+    const excludeFields = ["id", "createdAt", "updatedAt", "documents"];
+
     for (const [key, value] of Object.entries(data)) {
-        if (value !== undefined && key !== "id") {
+        if (value !== undefined && !excludeFields.includes(key)) {
             if (dateFields.includes(key)) {
                 updateData[key] = value ? new Date(value as string) : null;
             } else {
@@ -97,4 +99,45 @@ export async function updateWellShipment(id: string, data: any) {
     });
 
     return shipment;
+}
+
+export async function getClientSummaries() {
+    const clients = await prisma.wellShipment.groupBy({
+        by: ["clientName"],
+        _count: {
+            id: true,
+        },
+    });
+
+    const summaries = await Promise.all(
+        clients.map(async (c) => {
+            const [completed, ongoing] = await Promise.all([
+                prisma.wellShipment.count({
+                    where: { clientName: c.clientName, isPaid: true },
+                }),
+                prisma.wellShipment.count({
+                    where: { clientName: c.clientName, isPaid: false },
+                }),
+            ]);
+
+            return {
+                clientName: c.clientName,
+                total: c._count.id,
+                completed,
+                ongoing,
+            };
+        })
+    );
+
+    return summaries;
+}
+
+export async function getShipmentsByClient(clientName: string) {
+    return await prisma.wellShipment.findMany({
+        where: { clientName },
+        orderBy: { createdAt: "desc" },
+        include: {
+            documents: true,
+        },
+    });
 }

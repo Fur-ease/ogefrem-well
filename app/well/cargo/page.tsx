@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Download, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { StatusBadge } from "@/components/StatusBadge";
+import Breadcrumbs from "@/components/well/Breadcrumbs";
 
 export default function WellCargoPage() {
     const [shipments, setShipments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         fetch("/api/well/cargo")
@@ -24,6 +26,12 @@ export default function WellCargoPage() {
                 setLoading(false);
             });
     }, []);
+
+    const filteredShipments = shipments.filter(s =>
+        s.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.refNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.blNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const handleExport = async () => {
         setExporting(true);
@@ -53,24 +61,47 @@ export default function WellCargoPage() {
 
     return (
         <div className="animate-fade-in" style={{ paddingBottom: "2rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
+            <Breadcrumbs />
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "1.5rem" }}>
                 <div>
                     <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.25rem", color: "hsl(var(--text-primary))" }}>
-                        WESTON LOGISTICS LTD
+                        Daily Cargo Status
                     </h1>
                     <p style={{ color: "hsl(var(--text-secondary))", fontSize: "0.9rem", fontWeight: 600 }}>
-                        DAILY CARGO STATUS
+                        WESTON LOGISTICS LTD - Real-time tracking entries
                     </p>
                 </div>
-                <button
-                    onClick={handleExport}
-                    disabled={exporting || loading}
-                    className="btn btn-primary"
-                    style={{ gap: "0.5rem" }}
-                >
-                    {exporting ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} />}
-                    {exporting ? "Exporting..." : "Export to Excel"}
-                </button>
+
+                <div style={{ display: "flex", gap: "1rem" }}>
+                    <div style={{ position: "relative" }}>
+                        <Search style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "hsl(var(--text-muted))" }} size={16} />
+                        <input
+                            type="text"
+                            placeholder="Search client, ref or B/L..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{
+                                padding: "0.5rem 1rem 0.5rem 2.25rem",
+                                borderRadius: "8px",
+                                background: "rgba(0,0,0,0.2)",
+                                border: "1px solid hsl(var(--border))",
+                                color: "#fff",
+                                fontSize: "0.85rem",
+                                minWidth: "250px"
+                            }}
+                        />
+                    </div>
+                    <button
+                        onClick={handleExport}
+                        disabled={exporting || loading}
+                        className="btn btn-primary btn-sm"
+                        style={{ gap: "0.5rem" }}
+                    >
+                        {exporting ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} />}
+                        {exporting ? "Exporting..." : "Export Excel"}
+                    </button>
+                </div>
             </div>
 
             <div className="card" style={{ padding: 0, overflowX: "auto" }}>
@@ -108,14 +139,14 @@ export default function WellCargoPage() {
                                         <div style={{ marginTop: "1rem", color: "hsl(var(--text-muted))" }}>Loading daily cargo report...</div>
                                     </td>
                                 </tr>
-                            ) : shipments.length === 0 ? (
+                            ) : filteredShipments.length === 0 ? (
                                 <tr>
                                     <td colSpan={20} style={{ textAlign: "center", padding: "4rem", color: "hsl(var(--text-muted))" }}>
-                                        No cargo entries found. Note: PCHARGES shipments are excluded from this report.
+                                        {searchTerm ? "No matching cargo entries found." : "No cargo entries found. Note: PCHARGES shipments are excluded from this report."}
                                     </td>
                                 </tr>
                             ) : (
-                                shipments.map((s) => (
+                                filteredShipments.map((s) => (
                                     <tr key={s.id} className="hover-row">
                                         <td style={{ fontWeight: 600 }}>{s.clientName}</td>
                                         <td style={{ fontFamily: "monospace", fontWeight: 600, color: "hsl(var(--primary))" }}>{s.refNumber}</td>

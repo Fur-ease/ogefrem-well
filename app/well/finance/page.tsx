@@ -1,18 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, ArrowLeft, CheckCircle, Ship } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Loader2, ArrowLeft, CheckCircle, Ship, Printer, FileText, X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import Breadcrumbs from "@/components/well/Breadcrumbs";
+import { WellQuotation } from "@/components/well/WellQuotation";
 
 export default function WellFinancePage() {
     const [shipments, setShipments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeQuotation, setActiveQuotation] = useState<any>(null);
+    const [quotationAmount, setQuotationAmount] = useState<number>(0);
+    const printRef = useRef<HTMLDivElement>(null);
 
     const fetchPending = async () => {
         try {
-            const res = await fetch("/api/well/finance");
+            const res = await fetch("/api/well/shipments?status=PCHARGES");
             const data = await res.json();
             setShipments(data.filter((s: any) => !s.isPaid));
             setLoading(false);
@@ -26,26 +31,71 @@ export default function WellFinancePage() {
         fetchPending();
     }, []);
 
-    const markPaid = async (id: string) => {
-        const amountStr = prompt("Enter payment amount USD (optional):", "0");
-        if (amountStr === null) return;
+    const suggestBilledAmount = (containerSize: string) => {
+        // Simple logic: $500 per 20ft, $900 per 40ft
+        const size20 = containerSize.match(/(\d+)X20/i);
+        const size40 = containerSize.match(/(\d+)X40/i);
 
-        const amount = parseFloat(amountStr) || 0;
+        let total = 0;
+        if (size20) total += parseInt(size20[1]) * 500;
+        if (size40) total += parseInt(size40[1]) * 900;
+
+        return total || 500; // default to 500
+    };
+
+    const handleGenerateQuotation = (shipment: any) => {
+        const suggested = suggestBilledAmount(shipment.containerSize || "");
+        const amount = prompt(`Enter quotation amount for ${shipment.refNumber}:`, suggested.toString());
+        if (amount === null) return;
+
+        setQuotationAmount(parseFloat(amount) || 0);
+        setActiveQuotation(shipment);
+    };
+
+    const markPaid = async (id: string, currentAmount: number) => {
+        if (!confirm(`Clear payment of USD ${currentAmount} for this shipment?`)) return;
+
         const tId = toast.loading("Marking as paid...");
-
         try {
             const res = await fetch(`/api/well/finance/${id}/pay`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ amount }),
+                body: JSON.stringify({ amount: currentAmount }),
             });
             if (!res.ok) throw new Error("Failed");
 
-            toast.success("Shipment cleared from finance queue", { id: tId });
+            toast.success("Shipment cleared successfully", { id: tId });
             fetchPending();
         } catch (error) {
             toast.error("Error marking as paid", { id: tId });
         }
+    };
+
+    const handlePrint = () => {
+        const printContent = printRef.current;
+        if (!printContent) return;
+
+        const win = window.open("", "", "width=900,height=900");
+        if (!win) return;
+
+        win.document.write(`
+            <html>
+                <head>
+                    <title>Quotation - ${activeQuotation.refNumber}</title>
+                    <style>
+                        body { margin: 0; padding: 0; }
+                    </style>
+                </head>
+                <body>
+                    ${printContent.innerHTML}
+                </body>
+            </html>
+        `);
+        win.document.close();
+        setTimeout(() => {
+            win.print();
+            win.close();
+        }, 500);
     };
 
     if (loading) {
@@ -54,16 +104,14 @@ export default function WellFinancePage() {
 
     return (
         <div className="animate-fade-in" style={{ paddingBottom: "3rem" }}>
-            <Link href="/well" className="btn btn-ghost" style={{ marginBottom: "1.5rem", gap: "0.5rem", display: "inline-flex" }}>
-                <ArrowLeft size={16} /> Back to Dashboard
-            </Link>
+            <Breadcrumbs />
 
             <div style={{ marginBottom: "2rem" }}>
                 <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.25rem", color: "hsl(var(--text-primary))" }}>
-                    Finance Queue
+                    Finance & Billing
                 </h1>
                 <p style={{ color: "hsl(var(--text-secondary))", fontSize: "0.9rem" }}>
-                    Shipments in P.CHARGES status awaiting payment clearance
+                    Generate quotations and clear payments for P.CHARGES shipments
                 </p>
             </div>
 
@@ -74,10 +122,10 @@ export default function WellFinancePage() {
                             <tr>
                                 <th>Ref</th>
                                 <th>Client</th>
+                                <th>Containers</th>
+                                <th>Suggested</th>
                                 <th>B/L NO.</th>
-                                <th>Vessel</th>
-                                <th>Moved to PCHARGES</th>
-                                <th>Action</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -90,27 +138,87 @@ export default function WellFinancePage() {
                                     </td>
                                 </tr>
                             ) : (
-                                shipments.map(s => (
-                                    <tr key={s.id}>
-                                        <td style={{ fontWeight: 600, fontFamily: "monospace", color: "hsl(var(--primary))" }}>{s.refNumber}</td>
-                                        <td style={{ fontWeight: 600 }}>{s.clientName}</td>
-                                        <td style={{ color: "hsl(var(--text-secondary))" }}>{s.blNumber}</td>
-                                        <td>{s.vesselName || "—"}</td>
-                                        <td style={{ color: "hsl(var(--text-muted))" }}>
-                                            {format(new Date(s.updatedAt), "dd MMM yyyy HH:mm")}
-                                        </td>
-                                        <td>
-                                            <button onClick={() => markPaid(s.id)} className="btn btn-success btn-sm" style={{ gap: "0.5rem" }}>
-                                                <CheckCircle size={14} /> Clear Payment
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
+                                shipments.map(s => {
+                                    const suggested = suggestBilledAmount(s.containerSize || "");
+                                    return (
+                                        <tr key={s.id}>
+                                            <td style={{ fontWeight: 600, fontFamily: "monospace", color: "hsl(var(--primary))" }}>{s.refNumber}</td>
+                                            <td style={{ fontWeight: 600 }}>{s.clientName}</td>
+                                            <td style={{ fontSize: "0.85rem" }}>{s.containerSize || "—"}</td>
+                                            <td style={{ fontWeight: 600, color: "hsl(var(--success))" }}>USD {suggested}</td>
+                                            <td style={{ color: "hsl(var(--text-secondary))" }}>{s.blNumber}</td>
+                                            <td>
+                                                <div style={{ display: "flex", gap: "0.5rem" }}>
+                                                    <button
+                                                        onClick={() => handleGenerateQuotation(s)}
+                                                        className="btn btn-secondary btn-sm"
+                                                        style={{ gap: "0.4rem" }}
+                                                    >
+                                                        <FileText size={14} /> Quotation
+                                                    </button>
+                                                    <button
+                                                        onClick={() => markPaid(s.id, suggested)}
+                                                        className="btn btn-success btn-sm"
+                                                        style={{ gap: "0.4rem" }}
+                                                    >
+                                                        <CheckCircle size={14} /> Clear
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {/* Quotation Preview Modal */}
+            {activeQuotation && (
+                <div style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    background: "rgba(0,0,0,0.8)",
+                    zIndex: 1000,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    padding: "2rem"
+                }}>
+                    <div style={{
+                        width: "100%",
+                        maxWidth: "900px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "1rem"
+                    }}>
+                        <button
+                            onClick={() => handlePrint()}
+                            className="btn btn-primary"
+                            style={{ gap: "0.5rem" }}
+                        >
+                            <Printer size={18} /> Print Quotation
+                        </button>
+                        <button
+                            onClick={() => setActiveQuotation(null)}
+                            className="btn btn-ghost"
+                            style={{ color: "#fff", background: "rgba(255,255,255,0.1)" }}
+                        >
+                            <X size={24} />
+                        </button>
+                    </div>
+
+                    <div style={{ width: "100%", maxWidth: "900px", flex: 1, background: "#fff", borderRadius: "8px", overflowY: "auto" }}>
+                        <div ref={printRef}>
+                            <WellQuotation shipment={activeQuotation} quotationAmount={quotationAmount} />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

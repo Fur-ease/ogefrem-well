@@ -3,9 +3,10 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Upload, FileText, Trash2, Save, Download } from "lucide-react";
+import { Loader2, ArrowLeft, Upload, FileText, Trash2, Save, Download, Eye, X } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import Breadcrumbs from "@/components/well/Breadcrumbs";
 
 export default function WellShipmentDetailPage() {
     const { id } = useParams();
@@ -16,6 +17,7 @@ export default function WellShipmentDetailPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [formData, setFormData] = useState<any>({});
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
     const fetchShipment = async () => {
         try {
@@ -118,9 +120,7 @@ export default function WellShipmentDetailPage() {
 
     return (
         <div className="animate-fade-in" style={{ paddingBottom: "3rem" }}>
-            <Link href="/well" className="btn btn-ghost" style={{ marginBottom: "1.5rem", gap: "0.5rem", display: "inline-flex" }}>
-                <ArrowLeft size={16} /> Back to Dashboard
-            </Link>
+            <Breadcrumbs />
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem" }}>
                 <div>
@@ -263,6 +263,9 @@ export default function WellShipmentDetailPage() {
                                         </div>
                                     </div>
                                     <div style={{ display: "flex", gap: "0.5rem" }}>
+                                        <button onClick={() => setPreviewUrl(doc.driveUrl)} className="btn btn-ghost btn-sm" style={{ padding: "0.4rem", color: "hsl(var(--primary))" }}>
+                                            <Eye size={16} />
+                                        </button>
                                         <a href={doc.driveUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: "0.4rem" }}>
                                             <Download size={16} />
                                         </a>
@@ -276,6 +279,46 @@ export default function WellShipmentDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* PDF Preview Modal */}
+            {previewUrl && (
+                <div style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    background: "rgba(0,0,0,0.8)",
+                    zIndex: 1000,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    padding: "2rem"
+                }}>
+                    <div style={{
+                        width: "100%",
+                        maxWidth: "1000px",
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        marginBottom: "1rem"
+                    }}>
+                        <button
+                            onClick={() => setPreviewUrl(null)}
+                            className="btn btn-ghost"
+                            style={{ color: "#fff", background: "rgba(255,255,255,0.1)" }}
+                        >
+                            <X size={24} /> Close
+                        </button>
+                    </div>
+                    <div style={{ width: "100%", maxWidth: "1000px", flex: 1, background: "#fff", borderRadius: "8px", overflow: "hidden" }}>
+                        <iframe
+                            src={previewUrl.replace("/view", "/preview")}
+                            style={{ width: "100%", height: "100%", border: "none" }}
+                            title="Document Preview"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

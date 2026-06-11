@@ -231,6 +231,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 onClick={() => isMobile && setIsMobileMenuOpen(false)}
               />
               <NavLink
+                href="/well/shipments"
+                icon={<BarChart3 size={20} />}
+                label="Shipment"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname.startsWith("/well/shipments")}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
                 href="/well/finance"
                 icon={<BarChart3 size={20} />}
                 label="Finance"

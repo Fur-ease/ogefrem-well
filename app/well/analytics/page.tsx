@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ArrowLeft, BarChart3, TrendingUp, AlertCircle } from "lucide-react";
+import { Loader2, ArrowLeft, BarChart3, TrendingUp, AlertCircle, DollarSign, Package, User } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    LineChart, Line, AreaChart, Area
+} from "recharts";
+import Breadcrumbs from "@/components/well/Breadcrumbs";
 
 export default function WellAnalyticsPage() {
     const [data, setData] = useState<any>(null);
@@ -26,66 +31,150 @@ export default function WellAnalyticsPage() {
         return <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}><Loader2 className="animate-spin" size={32} /></div>;
     }
 
+    // Prepare chart data
+    const revenueData = Object.entries(data.monthlyRevenue || {}).map(([month, val]) => ({
+        month,
+        revenue: val
+    })).sort((a, b) => a.month.localeCompare(b.month));
+
+    const containerData = Object.entries(data.monthlyContainers || {}).map(([month, val]) => ({
+        month,
+        containers: val
+    })).sort((a, b) => a.month.localeCompare(b.month));
+
+    const clientRevenue = Object.entries(data.revenuePerClient || {}).map(([client, val]) => ({
+        client,
+        revenue: val as number
+    })).sort((a, b) => b.revenue - a.revenue);
+
     return (
         <div className="animate-fade-in" style={{ paddingBottom: "3rem" }}>
-            <Link href="/well" className="btn btn-ghost" style={{ marginBottom: "1.5rem", gap: "0.5rem", display: "inline-flex" }}>
-                <ArrowLeft size={16} /> Back to Dashboard
-            </Link>
+            <Breadcrumbs />
 
             <div style={{ marginBottom: "2rem" }}>
                 <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.25rem", color: "hsl(var(--text-primary))" }}>
-                    Operations Analytics
+                    Performance Analytics
                 </h1>
                 <p style={{ color: "hsl(var(--text-secondary))", fontSize: "0.9rem" }}>
-                    WESTON LOGISTICS performance overview
+                    Financial and operational overview of WELL Logistics
                 </p>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem", marginBottom: "2rem" }}>
                 <div className="card" style={{ padding: "1.5rem" }}>
-                    <h2 style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <BarChart3 size={20} color="hsl(var(--primary))" /> Volume by Status
+                    <div style={{ color: "hsl(var(--text-muted))", fontSize: "0.8rem", fontWeight: 600, textTransform: "uppercase", marginBottom: "0.5rem" }}>
+                        Total Revenue (All Time)
+                    </div>
+                    <div style={{ fontSize: "2rem", fontWeight: 800, color: "hsl(var(--success))", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <DollarSign size={24} />
+                        {clientRevenue.reduce((acc, curr) => acc + curr.revenue, 0).toLocaleString()}
+                    </div>
+                </div>
+                <div className="card" style={{ padding: "1.5rem" }}>
+                    <div style={{ color: "hsl(var(--text-muted))", fontSize: "0.8rem", fontWeight: 600, textTransform: "uppercase", marginBottom: "0.5rem" }}>
+                        Total Containers Cleared
+                    </div>
+                    <div style={{ fontSize: "2rem", fontWeight: 800, color: "hsl(var(--info))", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <Package size={24} />
+                        {containerData.reduce((acc, curr) => acc + (curr.containers as number), 0)}
+                    </div>
+                </div>
+                <div className="card" style={{ padding: "1.5rem" }}>
+                    <div style={{ color: "hsl(var(--text-muted))", fontSize: "0.8rem", fontWeight: 600, textTransform: "uppercase", marginBottom: "0.5rem" }}>
+                        Active Clients
+                    </div>
+                    <div style={{ fontSize: "2rem", fontWeight: 800, color: "hsl(var(--primary))", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <User size={24} />
+                        {clientRevenue.length}
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
+                <div className="card" style={{ padding: "1.5rem" }}>
+                    <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <TrendingUp size={18} color="hsl(var(--success))" /> Revenue Trend (Monthly)
                     </h2>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        {[
-                            { label: "Total Shipments", value: data.total, color: "hsl(var(--text-primary))" },
-                            { label: "A.V.A (Awaiting)", value: data.statusCounts.AVA, color: "hsl(var(--warning))", pct: (data.statusCounts.AVA / data.total) * 100 },
-                            { label: "F.U.P (Follow Up)", value: data.statusCounts.FUP, color: "hsl(var(--info))", pct: (data.statusCounts.FUP / data.total) * 100 },
-                            { label: "F.U.R.O (Released)", value: data.statusCounts.FURO, color: "hsl(var(--success))", pct: (data.statusCounts.FURO / data.total) * 100 },
-                            { label: "P.CHARGES (Finance)", value: data.statusCounts.PCHARGES, color: "#8b5cf6", pct: (data.statusCounts.PCHARGES / data.total) * 100 },
-                        ].map(item => (
-                            <div key={item.label}>
-                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem", fontSize: "0.9rem", fontWeight: 600 }}>
-                                    <span>{item.label}</span>
-                                    <span>{item.value}</span>
-                                </div>
-                                {item.label !== "Total Shipments" && (
-                                    <div style={{ width: "100%", height: "8px", background: "rgba(255,255,255,0.1)", borderRadius: "4px", overflow: "hidden" }}>
-                                        <div style={{ width: `${item.pct}%`, height: "100%", background: item.color, borderRadius: "4px" }} />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                    <div style={{ height: "300px", width: "100%" }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={revenueData}>
+                                <defs>
+                                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                <XAxis dataKey="month" stroke="hsl(var(--text-muted))" fontSize={12} />
+                                <YAxis stroke="hsl(var(--text-muted))" fontSize={12} />
+                                <Tooltip
+                                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }}
+                                    itemStyle={{ color: "hsl(var(--success))" }}
+                                />
+                                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--success))" fillOpacity={1} fill="url(#colorRev)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
 
                 <div className="card" style={{ padding: "1.5rem" }}>
-                    <h2 style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <TrendingUp size={20} color="hsl(var(--success))" /> Finance Queue
+                    <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <Package size={18} color="hsl(var(--info))" /> Containers Cleared
                     </h2>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "calc(100% - 3rem)" }}>
-                        <div style={{ textAlign: "center" }}>
-                            <AlertCircle size={48} color={data.unpaidPcharges > 0 ? "hsl(var(--error))" : "hsl(var(--success))"} style={{ margin: "0 auto 1rem" }} />
-                            <div style={{ fontSize: "3rem", fontWeight: 800, lineHeight: 1 }}>{data.unpaidPcharges}</div>
-                            <div style={{ color: "hsl(var(--text-secondary))", marginTop: "0.5rem", fontWeight: 600 }}>Unpaid P.Charges Shipments</div>
-
-                            {data.unpaidPcharges > 0 && (
-                                <Link href="/well/finance" className="btn btn-primary" style={{ marginTop: "1.5rem" }}>
-                                    Go to Finance clearing
-                                </Link>
-                            )}
-                        </div>
+                    <div style={{ height: "300px", width: "100%" }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={containerData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                <XAxis dataKey="month" stroke="hsl(var(--text-muted))" fontSize={12} />
+                                <YAxis stroke="hsl(var(--text-muted))" fontSize={12} />
+                                <Tooltip
+                                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }}
+                                />
+                                <Bar dataKey="containers" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
+                </div>
+            </div>
+
+            <div className="card" style={{ padding: "1.5rem" }}>
+                <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "1.5rem" }}>Revenue per Client</h2>
+                <div className="data-table-container">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Total Revenue Generated</th>
+                                <th>Contribution %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {clientRevenue.length === 0 ? (
+                                <tr>
+                                    <td colSpan={3} style={{ textAlign: "center", padding: "2rem" }}>No revenue data yet.</td>
+                                </tr>
+                            ) : (
+                                clientRevenue.map(c => {
+                                    const totalAll = clientRevenue.reduce((acc, curr) => acc + curr.revenue, 0);
+                                    const pct = ((c.revenue / totalAll) * 100).toFixed(1);
+                                    return (
+                                        <tr key={c.client}>
+                                            <td style={{ fontWeight: 600 }}>{c.client}</td>
+                                            <td style={{ fontWeight: 800, color: "hsl(var(--success))" }}>USD {c.revenue.toLocaleString()}</td>
+                                            <td>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                                                    <div style={{ flex: 1, height: "6px", background: "rgba(255,255,255,0.1)", borderRadius: "3px", overflow: "hidden" }}>
+                                                        <div style={{ width: `${pct}%`, height: "100%", background: "hsl(var(--primary))" }} />
+                                                    </div>
+                                                    <span style={{ fontSize: "0.8rem", fontWeight: 700, minWidth: "40px" }}>{pct}%</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
