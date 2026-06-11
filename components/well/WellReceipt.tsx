@@ -3,29 +3,34 @@
 import React from "react";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
-// Use 'any' or common types instead of @prisma/client in client components
 
-interface InvoicePrintProps {
+interface WellReceiptProps {
     shipment: any;
 }
 
-export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
-    if (!shipment.invoiceNumber) return null;
+export const WellReceipt = ({ shipment }: WellReceiptProps) => {
+    if (!shipment.isPaid) return null;
 
-    const totalKsh = Number(shipment.totalUSD || 0) * Number(shipment.roeKsh || 0);
+    const amount = Number(shipment.amount || 0);
+    // Well shipments usually use a default ROE or a stored one. 
+    // I'll add roeKsh to the model in the next step to be consistent.
+    const roeKsh = Number(shipment.roeKsh || 130);
+    const totalKsh = amount * roeKsh;
 
     return (
         <div className="invoice-print-container">
             <style jsx>{`
                 .invoice-print-container {
-                    padding: 40px;
+                    padding: 30px;
                     background: white;
                     color: black;
                     font-family: 'Times New Roman', serif;
-                    width: 210mm; /* A4 width */
+                    width: 210mm;
                     min-height: 297mm;
                     margin: 0 auto;
                     font-size: 11px;
+                    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+                    position: relative;
                 }
 
                 @media print {
@@ -33,6 +38,8 @@ export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
                         padding: 0;
                         margin: 0;
                         width: 100%;
+                        min-height: auto;
+                        box-shadow: none;
                     }
                     body {
                         background: white !important;
@@ -229,12 +236,12 @@ export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
                 <img src="/RecieptHeader.png" alt="Receipt Header" className="header-image" />
             </div>
 
-            <div className="invoice-title">Invoice</div>
+            <div className="invoice-title">Receipt</div>
 
             <div className="metadata-section">
                 <div className="meta-left">
                     <div className="meta-box" style={{ flex: 1 }}>
-                        <div className="meta-label">Invoice To</div>
+                        <div className="meta-label">Received From</div>
                         <div className="meta-value" style={{ fontSize: '14px', padding: '15px 10px' }}>{shipment.clientName}</div>
                         <div style={{ marginTop: 'auto', borderTop: '1px solid #000', display: 'flex' }}>
                             <div className="meta-label" style={{ borderBottom: 'none', borderRight: '1px solid #000', width: '100px' }}>Cust VAT Reg.</div>
@@ -249,15 +256,15 @@ export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
                             <div className="meta-value" style={{ minHeight: 'auto', padding: '4px 8px' }}>P051153426Z</div>
                         </div>
                         <div className="grid-cell">
-                            <div className="meta-label">Tax Date</div>
+                            <div className="meta-label">Payment Date</div>
                             <div className="meta-value" style={{ minHeight: 'auto', padding: '4px 8px' }}>
-                                {shipment.invoiceDate ? format(new Date(shipment.invoiceDate), 'dd/MM/yyyy') : format(new Date(), 'dd/MM/yyyy')}
+                                {shipment.paidAt ? format(new Date(shipment.paidAt), 'dd/MM/yyyy') : format(new Date(), 'dd/MM/yyyy')}
                             </div>
                         </div>
                         <div className="grid-cell">
-                            <div className="meta-label">Invoice No.</div>
+                            <div className="meta-label">Receipt No.</div>
                             <div className="meta-value" style={{ minHeight: 'auto', padding: '4px 8px' }}>
-                                {shipment.cuInvoiceNumber || shipment.invoiceNumber}
+                                {shipment.refNumber}
                             </div>
                         </div>
                     </div>
@@ -268,13 +275,13 @@ export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
                         </div>
                         <div className="grid-cell">
                             <div className="meta-label">WELL NO.</div>
-                            <div className="meta-value" style={{ minHeight: 'auto', padding: '6px 8px' }}>{shipment.id.slice(-8).toUpperCase()}</div>
+                            <div className="meta-value" style={{ minHeight: 'auto', padding: '6px 8px' }}>{shipment.refNumber}</div>
                         </div>
                     </div>
                     <div className="meta-grid-row grid-3">
                         <div className="grid-cell">
                             <div className="meta-label">ROE:</div>
-                            <div className="meta-value" style={{ textAlign: 'center', minHeight: 'auto', padding: '4px' }}>{shipment.roeKsh?.toString() || '130'}</div>
+                            <div className="meta-value" style={{ textAlign: 'center', minHeight: 'auto', padding: '4px' }}>{roeKsh}</div>
                         </div>
                         <div className="grid-cell">
                             <div className="meta-label">VESSEL NAME</div>
@@ -300,18 +307,18 @@ export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
                 </thead>
                 <tbody>
                     <tr style={{ height: '300px' }}>
-                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>TRANSIT</td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>LOGISTICS</td>
                         <td style={{ padding: '15px 10px' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>
-                                FERI & CERTIFICATE OF DESTINATION CHARGES {shipment.containerCount}X40FT CNTR ({shipment.feriNumber || 'N/A'})
+                                WESTON LOGISTICS HANDLING CHARGES FOR {shipment.containerSize} ({shipment.blNumber})
                             </div>
                             <div style={{ color: '#000', fontSize: '11px' }}>
-                                Shipment Tracking BL: {shipment.blNumber}
+                                {shipment.clientRef ? `Client Ref: ${shipment.clientRef}` : ''}
                             </div>
                         </td>
-                        <td style={{ textAlign: 'center' }}>{shipment.hsCode || '0010.22.00'}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{Number(shipment.totalUSD).toFixed(2)}</td>
-                        <td style={{ textAlign: 'center' }}>{shipment.vatPercentage || '0'}%</td>
+                        <td style={{ textAlign: 'center' }}>0000.00.00</td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{amount.toFixed(2)}</td>
+                        <td style={{ textAlign: 'center' }}>0%</td>
                     </tr>
                 </tbody>
             </table>
@@ -319,8 +326,8 @@ export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
             <div className="footer-flex">
                 <div className="signatures">
                     <div className="sig-line">
-                        <div className="sig-label">PREPARED BY:</div>
-                        <div className="sig-value">{shipment.preparedBy}</div>
+                        <div className="sig-label">PAID TO:</div>
+                        <div className="sig-value">WESTON LOGISTICS LTD</div>
                     </div>
                     <div className="sig-line">
                         <div className="sig-label">CHECKED:</div>
@@ -328,25 +335,18 @@ export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
                     </div>
                     <div className="sig-line">
                         <div className="sig-label">AUTHORISED:</div>
-                        <div className="sig-value" style={{ position: 'relative' }}>
-                            <img src="https://i.ibb.co/V9mH9cK/signature.png" alt="Signature" style={{ position: 'absolute', bottom: '0', left: '20px', height: '50px', display: 'none' }} />
-                        </div>
+                        <div className="sig-value"></div>
                     </div>
 
                     <div className="qr-section">
                         <QRCodeSVG
-                            value={shipment.qrCodeUrl || `https://itax.kra.go.ke/KRA-Portal/complianceMonitoring.htm?actionCode=validateInvoice&inv=${shipment.invoiceNumber}`}
+                            value={`https://westonlogistics.com/verify/${shipment.id}`}
                             size={70}
                             level="H"
                         />
                         <div className="qr-meta">
-                            {shipment.cuInvoiceNumber || shipment.invoiceNumber?.padStart(10, '0')}<br />
-                            {shipment.cuDateTime ? format(new Date(shipment.cuDateTime), 'yyyy/MM/dd HH:mm a') : format(new Date(), 'yyyy/MM/dd HH:mm a')}<br />
-                            {shipment.cuSerialNumber && (
-                                <>
-                                    CU Serial: {shipment.cuSerialNumber}<br />
-                                </>
-                            )}
+                            Receipt ID: {shipment.id.slice(-8).toUpperCase()}<br />
+                            Payment Date: {shipment.paidAt ? format(new Date(shipment.paidAt), 'yyyy/MM/dd HH:mm a') : format(new Date(), 'yyyy/MM/dd HH:mm a')}<br />
                             Total - Ksh {totalKsh.toFixed(2)}
                         </div>
                     </div>
@@ -355,7 +355,7 @@ export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
                 <div className="totals-box">
                     <div className="total-row">
                         <div className="total-label">Subtotal</div>
-                        <div className="total-val">USD {Number(shipment.totalUSD).toFixed(2)}</div>
+                        <div className="total-val">USD {amount.toFixed(2)}</div>
                     </div>
                     <div className="total-row">
                         <div className="total-label">VAT Total</div>
@@ -363,7 +363,7 @@ export const InvoicePrint = ({ shipment }: InvoicePrintProps) => {
                     </div>
                     <div className="total-row final-total">
                         <div className="total-label" style={{ fontWeight: '900' }}>Total</div>
-                        <div className="total-val" style={{ fontWeight: '900' }}>USD {Number(shipment.totalUSD).toFixed(2)}</div>
+                        <div className="total-val" style={{ fontWeight: '900' }}>USD {amount.toFixed(2)}</div>
                     </div>
                 </div>
             </div>

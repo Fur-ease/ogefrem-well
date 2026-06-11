@@ -1,6 +1,15 @@
 "use client";
 
-import { ShipmentStatus } from "@prisma/client";
+// Enum replacements for @prisma/client to avoid browser bundle issues
+const ShipmentStatus = {
+    NEW: "NEW",
+    FERI_ADDED: "FERI_ADDED",
+    PAID: "PAID",
+    AD_GENERATED: "AD_GENERATED",
+    COMPLETED: "COMPLETED"
+} as const;
+
+type ShipmentStatus = keyof typeof ShipmentStatus;
 import { Check } from "lucide-react";
 
 

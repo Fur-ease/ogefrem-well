@@ -1,6 +1,20 @@
 "use client";
 
-import { DocumentType } from "@prisma/client";
+// Enum replacement for @prisma/client to avoid browser bundle issues during build
+const DocumentType = {
+    BL: "BL",
+    PACKING_LIST: "PACKING_LIST",
+    COMMERCIAL_INVOICE: "COMMERCIAL_INVOICE",
+    DRAFT_FERI: "DRAFT_FERI",
+    PROFORMA: "PROFORMA",
+    POP: "POP",
+    AD: "AD",
+    FACTURE: "FACTURE",
+    FINAL_FERI: "FINAL_FERI",
+    TIO: "TIO"
+} as const;
+
+type DocumentType = keyof typeof DocumentType;
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { Upload, FileUp } from "lucide-react";

@@ -226,6 +226,8 @@ model WellShipment {
   isPaid          Boolean       @default(false)
   paidAt          DateTime?
   amount          Decimal?      @db.Decimal(18, 2)
+  roeKsh          Decimal?      @db.Decimal(10, 2) @default(130)
+  invoiceDate     DateTime?
 
   notes           String?
 

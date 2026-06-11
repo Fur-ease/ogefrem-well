@@ -1,6 +1,7 @@
 "use client";
 
-import { ShipmentStatus } from "@prisma/client";
+// Use string literals to avoid @prisma/client browser bundle issues
+type ShipmentStatus = "NEW" | "FERI_ADDED" | "PAID" | "AD_GENERATED" | "COMPLETED";
 import { Circle } from "lucide-react";
 
 const STATUS_CONFIG: Record<

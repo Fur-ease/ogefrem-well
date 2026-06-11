@@ -16,6 +16,8 @@ export async function markWellShipmentAsPaid(id: string, amount?: number) {
         data: {
             isPaid: true,
             paidAt: new Date(),
+            invoiceDate: new Date(),
+            roeKsh: 130, // Default ROE, could be made dynamic
             amount: amount !== undefined ? amount : shipment.amount,
         },
     });

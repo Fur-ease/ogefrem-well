@@ -13,13 +13,15 @@ export const WellQuotation = ({ shipment, quotationAmount }: WellQuotationProps)
         <div className="quotation-print-container">
             <style jsx>{`
                 .quotation-print-container {
-                    padding: 40px;
+                    padding: 30px;
                     background: white;
                     color: black;
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     width: 210mm;
                     min-height: 297mm;
                     margin: 0 auto;
+                    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+                    position: relative;
                 }
 
                 @media print {
@@ -27,6 +29,8 @@ export const WellQuotation = ({ shipment, quotationAmount }: WellQuotationProps)
                         padding: 0;
                         margin: 0;
                         width: 100%;
+                        min-height: auto;
+                        box-shadow: none;
                     }
                 }
 

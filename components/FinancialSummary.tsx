@@ -1,9 +1,7 @@
 "use client";
 
-import { type Shipment } from "@prisma/client";
-
 interface Props {
-    shipment: Shipment;
+    shipment: any;
 }
 
 function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
