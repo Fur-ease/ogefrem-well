@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     try {
         const buffer = await exportWellCargoExcel();
 
-        return new NextResponse(buffer, {
+        return new NextResponse(buffer as any, {
             status: 200,
             headers: {
                 "Content-Disposition": `attachment; filename="Well_Cargo_Report.xlsx"`,
