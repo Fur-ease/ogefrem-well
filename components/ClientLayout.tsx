@@ -148,7 +148,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         >
           <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: isCollapsed && !isMobile ? "40px" : "48px" }}>
             <img
-              src="/logo1.png"
+              src="/logo2.png"
               alt="OGEFREM"
               style={{
                 height: isCollapsed && !isMobile ? "20px" : "30px",
@@ -321,7 +321,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid hsl(var(--sidebar-border))" }}>
           {(!isCollapsed || isMobile) ? (
             <div style={{ fontSize: "0.7rem", color: "hsl(var(--text-muted))", lineHeight: 1.5 }}>
-              OGEFREM — WELL<br />
+              WESTON — WELL<br />
               Management v1.0
             </div>
           ) : (

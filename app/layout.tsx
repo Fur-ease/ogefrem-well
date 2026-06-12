@@ -5,7 +5,7 @@ import { ClientLayout } from "@/components/ClientLayout";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "OGEFREM — WELL Shipment Management",
+  title: "WESTON — Shipment Management",
   description: "Production shipment management system for OGEFREM Representation WELL",
 };
 

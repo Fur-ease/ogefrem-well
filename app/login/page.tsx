@@ -103,7 +103,7 @@ export default function LoginPage() {
             borderRadius: "24px",
             boxShadow: "0 15px 40px rgba(0,0,0,0.4), inset 0 0 0 2px #0066cc20"
           }}>
-            <div style={{ position: "relative", width: "120px", height: "60px" }}>
+            {/* <div style={{ position: "relative", width: "120px", height: "60px" }}>
               <Image
                 src="/logo1.png"
                 alt="OGEFREM Logo"
@@ -111,7 +111,7 @@ export default function LoginPage() {
                 priority
                 style={{ objectFit: "contain" }}
               />
-            </div>
+            </div> */}
             <div style={{ width: "2px", height: "45px", background: "linear-gradient(to bottom, #0066cc, #fdb913)" }} />
             <div style={{ position: "relative", width: "100px", height: "50px" }}>
               <Image
@@ -137,9 +137,9 @@ export default function LoginPage() {
             </h1>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}>
               <div style={{ height: "1px", width: "20px", background: "#0066cc" }} />
-              <p style={{ color: "#fdb913", fontSize: "0.85rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em" }}>
+              {/* <p style={{ color: "#fdb913", fontSize: "0.85rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em" }}>
                 Secure Gateway
-              </p>
+              </p> */}
               <div style={{ height: "1px", width: "20px", background: "#fdb913" }} />
             </div>
           </div>
@@ -148,7 +148,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
             <div className="form-group">
-              <label style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", marginBottom: "0.5rem", display: "block" }}>CORPORATE EMAIL</label>
+              <label style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", marginBottom: "0.5rem", display: "block" }}>EMAIL</label>
               <div style={{ position: "relative" }}>
                 <Mail
                   size={20}
@@ -182,7 +182,7 @@ export default function LoginPage() {
             </div>
 
             <div className="form-group">
-              <label style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em" }}>OPERATIONS KEY</label>
+              <label style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em" }}>PASSWORD</label>
               <div style={{ position: "relative" }}>
                 <Lock
                   size={20}
