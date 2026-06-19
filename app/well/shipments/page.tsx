@@ -11,8 +11,10 @@ export default function WellShipmentsListPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
 
-    useEffect(() => {
-        fetch("/api/well/clients")
+    const fetchClients = (q?: string) => {
+        setLoading(true);
+        const url = q ? `/api/well/clients?q=${encodeURIComponent(q)}` : "/api/well/clients";
+        fetch(url)
             .then((res) => res.json())
             .then((data) => {
                 setClients(data);
@@ -22,11 +24,21 @@ export default function WellShipmentsListPage() {
                 toast.error("Failed to load client data");
                 setLoading(false);
             });
+    };
+
+    useEffect(() => {
+        fetchClients();
     }, []);
 
-    const filteredClients = clients.filter((c) =>
-        c.clientName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleSearch = () => {
+        fetchClients(searchTerm);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            handleSearch();
+        }
+    };
 
     if (loading) {
         return (
@@ -50,22 +62,32 @@ export default function WellShipmentsListPage() {
                     </p>
                 </div>
 
-                <div style={{ position: "relative" }}>
-                    <Search style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "hsl(var(--text-muted))" }} size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search clients..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{
-                            padding: "0.6rem 1rem 0.6rem 2.5rem",
-                            borderRadius: "8px",
-                            background: "rgba(0,0,0,0.2)",
-                            border: "1px solid hsl(var(--border))",
-                            color: "#fff",
-                            minWidth: "300px"
-                        }}
-                    />
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <div style={{ position: "relative" }}>
+                        <Search style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "hsl(var(--text-muted))" }} size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search clients or container #..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            style={{
+                                padding: "0.6rem 1rem 0.6rem 2.5rem",
+                                borderRadius: "8px",
+                                background: "white",
+                                border: "1px solid hsl(var(--border))",
+                                color: "black",
+                                minWidth: "300px"
+                            }}
+                        />
+                    </div>
+                    <button
+                        onClick={handleSearch}
+                        className="btn btn-secondary"
+                        style={{ background: "hsl(var(--primary))", color: "white", border: "none" }}
+                    >
+                        Search
+                    </button>
                 </div>
             </div>
 
@@ -83,14 +105,14 @@ export default function WellShipmentsListPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredClients.length === 0 ? (
+                            {clients.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} style={{ textAlign: "center", padding: "4rem", color: "hsl(var(--text-muted))" }}>
                                         No clients found.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredClients.map((c) => (
+                                clients.map((c) => (
                                     <tr key={c.clientName}>
                                         <td style={{ fontWeight: 600 }}>
                                             <Link

@@ -10,7 +10,9 @@ export async function GET(request: Request) {
     }
 
     try {
-        const summaries = await getClientSummaries();
+        const { searchParams } = new URL(request.url);
+        const q = searchParams.get("q") || undefined;
+        const summaries = await getClientSummaries(q);
         return NextResponse.json(summaries);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

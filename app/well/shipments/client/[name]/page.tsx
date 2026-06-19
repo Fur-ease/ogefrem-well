@@ -28,10 +28,14 @@ export default function WellClientShipmentsPage() {
             });
     }, [name]);
 
-    const filteredShipments = shipments.filter((s) =>
-        s.refNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.blNumber.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredShipments = shipments.filter((s) => {
+        const query = searchTerm.toLowerCase();
+        return (
+            s.refNumber.toLowerCase().includes(query) ||
+            s.blNumber.toLowerCase().includes(query) ||
+            s.containers?.some((c: any) => c.containerNumber.toLowerCase().includes(query))
+        );
+    });
 
     if (loading) {
         return (

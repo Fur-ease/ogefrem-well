@@ -30,10 +30,17 @@ export async function createWellShipment(data: any, userId: string) {
             vesselName: data.vesselName,
             eta: data.eta ? new Date(data.eta) : null,
             notes: data.notes,
+            containers: data.containers && Array.isArray(data.containers) ? {
+                create: data.containers.map((c: any) => ({
+                    containerNumber: c.containerNumber,
+                    size: c.size,
+                    weight: c.weight ? parseFloat(c.weight) : null,
+                }))
+            } : undefined,
         },
     });
 
-    logger.info({ shipmentId: shipment.id, refNumber }, "Created new WELL shipment");
+    logger.info({ shipmentId: shipment.id, refNumber }, "Created new WELL shipment with containers");
     return shipment;
 }
 
@@ -51,11 +58,33 @@ export async function getWellShipments(params: any = {}) {
         where.isPaid = params.isPaid;
     }
 
+    if (params.q) {
+        where.OR = [
+            { refNumber: { contains: params.q, mode: "insensitive" } },
+            { blNumber: { contains: params.q, mode: "insensitive" } },
+            { clientName: { contains: params.q, mode: "insensitive" } },
+            {
+                containers: {
+                    some: {
+                        containerNumber: { contains: params.q, mode: "insensitive" }
+                    }
+                }
+            }
+        ];
+    } else if (params.containerNumber) {
+        where.containers = {
+            some: {
+                containerNumber: { contains: params.containerNumber, mode: "insensitive" }
+            }
+        };
+    }
+
     const shipments = await prisma.wellShipment.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: {
             documents: true,
+            containers: true,
         },
     });
 
@@ -67,6 +96,9 @@ export async function getWellShipmentById(id: string) {
         where: { id },
         include: {
             documents: true,
+            containers: {
+                orderBy: { createdAt: "asc" }
+            },
         },
     });
     if (!shipment) throw new Error("Shipment not found");
@@ -81,7 +113,7 @@ export async function updateWellShipment(id: string, data: any) {
         "slinePaid", "ddRecv", "lodgedKpa", "dateVerified"
     ];
 
-    const excludeFields = ["id", "createdAt", "updatedAt", "documents"];
+    const excludeFields = ["id", "createdAt", "updatedAt", "documents", "containers"];
 
     for (const [key, value] of Object.entries(data)) {
         if (value !== undefined && !excludeFields.includes(key)) {
@@ -93,16 +125,70 @@ export async function updateWellShipment(id: string, data: any) {
         }
     }
 
+    // Handle nested container updates if present
+    if (data.containers && Array.isArray(data.containers)) {
+        // This is a simplified approach: delete and recreate or similar.
+        // For production, a more robust upsert logic per container ID is better.
+        // But for now, we'll allow updating them.
+
+        // Let's implement a basic upsert logic if they have IDs
+        for (const c of data.containers) {
+            const containerData = {
+                containerNumber: c.containerNumber,
+                size: c.size,
+                weight: c.weight ? parseFloat(c.weight.toString()) : null,
+                dischargeDate: c.dischargeDate ? new Date(c.dischargeDate) : null,
+                gateOutDate: c.gateOutDate ? new Date(c.gateOutDate) : null,
+                truckDetails: c.truckDetails,
+                driverName: c.driverName,
+                status: c.status,
+                remarks: c.remarks,
+            };
+
+            if (c.id && !c.id.startsWith("temp-")) {
+                await prisma.wellContainer.update({
+                    where: { id: c.id },
+                    data: containerData,
+                });
+            } else {
+                await prisma.wellContainer.create({
+                    data: {
+                        ...containerData,
+                        shipmentId: id,
+                    },
+                });
+            }
+        }
+    }
+
     const shipment = await prisma.wellShipment.update({
         where: { id },
         data: updateData,
+        include: {
+            containers: true
+        }
     });
 
     return shipment;
 }
 
-export async function getClientSummaries() {
+export async function getClientSummaries(q?: string) {
+    const where: any = {};
+    if (q) {
+        where.OR = [
+            { clientName: { contains: q, mode: "insensitive" } },
+            {
+                containers: {
+                    some: {
+                        containerNumber: { contains: q, mode: "insensitive" }
+                    }
+                }
+            }
+        ];
+    }
+
     const clients = await prisma.wellShipment.groupBy({
+        where,
         by: ["clientName"],
         _count: {
             id: true,
@@ -138,6 +224,7 @@ export async function getShipmentsByClient(clientName: string) {
         orderBy: { createdAt: "desc" },
         include: {
             documents: true,
+            containers: true,
         },
     });
 }

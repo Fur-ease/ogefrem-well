@@ -232,9 +232,35 @@ model WellShipment {
   notes           String?
 
   documents       WellDocument[]
+  containers      WellContainer[]
 
   @@index([status])
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — CONTAINER
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellContainer {
+  id              String       @id @default(cuid())
+  shipmentId      String
+  shipment        WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  
+  containerNumber String       // e.g. TGBU3222408
+  size            String?      // e.g. 20, 40
+  weight          Float?       // KG
+  dischargeDate   DateTime?
+  gateOutDate     DateTime?
+  truckDetails    String?
+  driverName      String?
+  status          String?      // e.g. "CLEARED", "RETURNED"
+  remarks         String?
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([shipmentId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ export default function WellCargoPage() {
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [appliedSearchTerm, setAppliedSearchTerm] = useState("");
 
     useEffect(() => {
         fetch("/api/well/cargo")
@@ -27,11 +28,26 @@ export default function WellCargoPage() {
             });
     }, []);
 
-    const filteredShipments = shipments.filter(s =>
-        s.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.refNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.blNumber.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredShipments = shipments.filter(s => {
+        const query = appliedSearchTerm.toLowerCase();
+        if (!query) return true;
+        return (
+            s.clientName.toLowerCase().includes(query) ||
+            s.refNumber.toLowerCase().includes(query) ||
+            s.blNumber.toLowerCase().includes(query) ||
+            s.containers?.some((c: any) => c.containerNumber.toLowerCase().includes(query))
+        );
+    });
+
+    const handleSearch = () => {
+        setAppliedSearchTerm(searchTerm);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            handleSearch();
+        }
+    };
 
     const handleExport = async () => {
         setExporting(true);
@@ -74,23 +90,33 @@ export default function WellCargoPage() {
                 </div>
 
                 <div style={{ display: "flex", gap: "1rem" }}>
-                    <div style={{ position: "relative" }}>
-                        <Search style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "hsl(var(--text-muted))" }} size={16} />
-                        <input
-                            type="text"
-                            placeholder="Search client, ref or B/L..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{
-                                padding: "0.5rem 1rem 0.5rem 2.25rem",
-                                borderRadius: "8px",
-                                background: "rgba(0,0,0,0.2)",
-                                border: "1px solid hsl(var(--border))",
-                                color: "#fff",
-                                fontSize: "0.85rem",
-                                minWidth: "250px"
-                            }}
-                        />
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <div style={{ position: "relative" }}>
+                            <Search style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "hsl(var(--text-muted))" }} size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search client, ref or B/L..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                style={{
+                                    padding: "0.5rem 1rem 0.5rem 2.25rem",
+                                    borderRadius: "8px",
+                                    background: "white",
+                                    border: "1px solid hsl(var(--border))",
+                                    color: "black",
+                                    fontSize: "0.85rem",
+                                    minWidth: "250px"
+                                }}
+                            />
+                        </div>
+                        <button
+                            onClick={handleSearch}
+                            className="btn btn-secondary btn-sm"
+                            style={{ background: "hsl(var(--primary))", color: "white", border: "none" }}
+                        >
+                            Search
+                        </button>
                     </div>
                     <button
                         onClick={handleExport}

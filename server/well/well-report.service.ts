@@ -129,3 +129,77 @@ export async function exportWellCargoExcel(): Promise<Buffer> {
     logger.info({ rows: shipments.length }, "WELL Daily Cargo report exported");
     return buffer;
 }
+
+export async function exportWellShipmentContainersExcel(shipmentId: string): Promise<Buffer> {
+    const shipment = await prisma.wellShipment.findUnique({
+        where: { id: shipmentId },
+        include: { containers: { orderBy: { createdAt: "asc" } } },
+    });
+
+    if (!shipment) throw new Error("Shipment not found");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("CONTAINER TRACKING");
+
+    // Title row
+    worksheet.mergeCells("A1", "I1");
+    const titleCell = worksheet.getCell("A1");
+    titleCell.value = `WESTON LOGISTICS LTD\nCONTAINER TRACKING REPORT - ${shipment.refNumber}\nCLIENT: ${shipment.clientName}`;
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    worksheet.getRow(1).height = 60;
+
+    // Header row
+    const CONTAINER_COLUMNS = [
+        "CONTAINER NO.", "SIZE", "WEIGHT (KG)", "DISCHARGE DATE", "GATE OUT DATE", "TRUCK DETAILS", "DRIVER", "STATUS", "REMARKS"
+    ];
+    const headerRow = worksheet.getRow(2);
+    CONTAINER_COLUMNS.forEach((col, idx) => {
+        const cell = headerRow.getCell(idx + 1);
+        cell.value = col;
+        cell.font = { bold: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD3D3D3" } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" }
+        };
+    });
+    worksheet.getRow(2).height = 25;
+
+    // Set widths
+    worksheet.columns = [
+        { width: 18 }, { width: 10 }, { width: 12 }, { width: 15 }, { width: 15 }, { width: 18 }, { width: 15 }, { width: 15 }, { width: 25 }
+    ];
+
+    const formatDate = (date: Date | null) => (date ? format(date, "d/M/yyyy") : "");
+
+    shipment.containers.forEach((c) => {
+        const row = worksheet.addRow([
+            c.containerNumber,
+            c.size,
+            c.weight || "",
+            formatDate(c.dischargeDate),
+            formatDate(c.gateOutDate),
+            c.truckDetails || "",
+            c.driverName || "",
+            c.status || "",
+            c.remarks || "",
+        ]);
+
+        row.eachCell((cell) => {
+            cell.border = {
+                top: { style: "thin" },
+                left: { style: "thin" },
+                bottom: { style: "thin" },
+                right: { style: "thin" }
+            };
+            cell.alignment = { horizontal: "center", vertical: "middle" };
+        });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer() as unknown as Buffer;
+    return buffer;
+}
