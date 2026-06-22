@@ -99,26 +99,43 @@ export const wellContainerSchema = z.object({
 
 export const createWellShipmentSchema = z.object({
     clientName: z.string().min(1, "Client name is required").max(200),
-    clientRef: z.string().optional(),
+    clientRef: z.string().optional().nullable(),
     blNumber: z.string().min(1, "BL number is required"),
     containerSize: z.string().min(1, "Container size is required"),
-    vesselName: z.string().optional(),
+    vesselName: z.string().optional().nullable(),
     eta: z.string().optional().nullable(),
-    notes: z.string().optional(),
+    notes: z.string().optional().nullable(),
     containers: z.array(wellContainerSchema).optional(),
 });
 
 export const updateWellShipmentSchema = z.object({
-    clientName: z.string().optional(),
-    clientRef: z.string().optional(),
-    blNumber: z.string().optional(),
-    containerSize: z.string().optional(),
-    vesselName: z.string().optional(),
+    clientName: z.string().optional().nullable(),
+    clientRef: z.string().optional().nullable(),
+    blNumber: z.string().optional().nullable(),
+    containerSize: z.string().optional().nullable(),
+    vesselName: z.string().optional().nullable(),
     eta: z.string().optional().nullable(),
-    status: z.string().optional(),
-    notes: z.string().optional(),
+    status: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
     isPaid: z.boolean().optional(),
     containers: z.array(wellContainerSchema).optional(),
+    // Finance fields
+    amount: z.coerce.number().optional().nullable(),
+    roeKsh: z.coerce.number().optional().nullable(),
+    invoiceDate: z.string().optional().nullable(),
+    paidAt: z.string().optional().nullable(),
+    // Tracking fields
+    docRecv: z.string().optional().nullable(),
+    entryNumber: z.string().optional().nullable(),
+    tblNtbl: z.string().optional().nullable(),
+    lastSlingCfs: z.string().optional().nullable(),
+    lodgeCustoms: z.string().optional().nullable(),
+    entryPassed: z.string().optional().nullable(),
+    slineCharges: z.string().optional().nullable(),
+    slinePaid: z.string().optional().nullable(),
+    ddRecv: z.string().optional().nullable(),
+    lodgedKpa: z.string().optional().nullable(),
+    dateVerified: z.string().optional().nullable(),
 });
 
 export type CreateShipmentInput = z.infer<typeof createShipmentSchema>;

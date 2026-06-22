@@ -162,12 +162,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
           {(!isCollapsed || isMobile) && (
             <div style={{ whiteSpace: "nowrap", opacity: isCollapsed && !isMobile ? 0 : 1, transition: "opacity 0.2s", marginLeft: "0.5rem" }}>
-              <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "hsl(var(--text-primary))", letterSpacing: "0.02em" }}>
-                OGEFREM
-              </div>
               <div style={{ fontSize: "0.75rem", color: "hsl(var(--primary))", fontWeight: 700, letterSpacing: "0.05em" }}>
                 WELL OPS
               </div>
+              {/* <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "hsl(var(--text-primary))", letterSpacing: "0.02em" }}>
+                OGEFREM
+              </div> */}
             </div>
           )}
         </div>
