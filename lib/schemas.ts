@@ -80,6 +80,47 @@ export const exportReportSchema = z.object({
         .regex(/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format"),
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL SCHEMAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const wellContainerSchema = z.object({
+    id: z.string().optional(),
+    containerNumber: z.string().min(1, "Container number is required").toUpperCase(),
+    size: z.string().optional(),
+    weight: z.coerce.number().optional(),
+    dischargeDate: z.string().optional().nullable(),
+    gateOutDate: z.string().optional().nullable(),
+    truckDetails: z.string().optional().nullable(),
+    driverName: z.string().optional().nullable(),
+    status: z.string().optional().nullable(),
+    remarks: z.string().optional().nullable(),
+});
+
+export const createWellShipmentSchema = z.object({
+    clientName: z.string().min(1, "Client name is required").max(200),
+    clientRef: z.string().optional(),
+    blNumber: z.string().min(1, "BL number is required"),
+    containerSize: z.string().min(1, "Container size is required"),
+    vesselName: z.string().optional(),
+    eta: z.string().optional().nullable(),
+    notes: z.string().optional(),
+    containers: z.array(wellContainerSchema).optional(),
+});
+
+export const updateWellShipmentSchema = z.object({
+    clientName: z.string().optional(),
+    clientRef: z.string().optional(),
+    blNumber: z.string().optional(),
+    containerSize: z.string().optional(),
+    vesselName: z.string().optional(),
+    eta: z.string().optional().nullable(),
+    status: z.string().optional(),
+    notes: z.string().optional(),
+    isPaid: z.boolean().optional(),
+    containers: z.array(wellContainerSchema).optional(),
+});
+
 export type CreateShipmentInput = z.infer<typeof createShipmentSchema>;
 export type AddFeriInput = z.infer<typeof addFeriSchema>;
 export type MarkPaidInput = z.infer<typeof markPaidSchema>;

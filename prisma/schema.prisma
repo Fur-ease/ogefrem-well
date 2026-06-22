@@ -236,6 +236,9 @@ model WellShipment {
 
   @@index([status])
   @@index([createdAt])
+  @@index([clientName])
+  @@index([blNumber])
+  @@index([refNumber])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -261,6 +264,7 @@ model WellContainer {
   updatedAt       DateTime     @updatedAt
 
   @@index([shipmentId])
+  @@index([containerNumber])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

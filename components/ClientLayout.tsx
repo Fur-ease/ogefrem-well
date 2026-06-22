@@ -175,39 +175,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         {/* Nav Links */}
         <nav style={{ padding: "1rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.25rem", flex: 1 }}>
 
-          {/* OGEFREM Section */}
-          {(session?.user?.department === "OGEFREM" || session?.user?.department === "ADMIN") && (
-            <>
-              {session?.user?.department === "ADMIN" && (
-                <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "hsl(var(--text-muted))", padding: "0.5rem 0.75rem", marginTop: "0.5rem", letterSpacing: "0.05em" }}>OGEFREM</div>
-              )}
-              <NavLink
-                href="/"
-                icon={<LayoutDashboard size={20} />}
-                label="Dashboard"
-                isCollapsed={isCollapsed && !isMobile}
-                isActive={pathname === "/"}
-                onClick={() => isMobile && setIsMobileMenuOpen(false)}
-              />
-              <NavLink
-                href="/reports"
-                icon={<FileDigitIcon size={20} />}
-                label="Reports"
-                isCollapsed={isCollapsed && !isMobile}
-                isActive={pathname === "/reports"}
-                onClick={() => isMobile && setIsMobileMenuOpen(false)}
-              />
-              <NavLink
-                href="/analytics"
-                icon={<BarChart3 size={20} />}
-                label="Analytics"
-                isCollapsed={isCollapsed && !isMobile}
-                isActive={pathname === "/analytics"}
-                onClick={() => isMobile && setIsMobileMenuOpen(false)}
-              />
-            </>
-          )}
-
           {/* WELL Section */}
           {(session?.user?.department === "WELL" || session?.user?.department === "ADMIN") && (
             <>
@@ -252,6 +219,39 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 label="WELL Analytics"
                 isCollapsed={isCollapsed && !isMobile}
                 isActive={pathname === "/well/analytics"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+            </>
+          )}
+
+          {/* OGEFREM Section */}
+          {(session?.user?.department === "OGEFREM" || session?.user?.department === "ADMIN") && (
+            <>
+              {session?.user?.department === "ADMIN" && (
+                <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "hsl(var(--text-muted))", padding: "0.5rem 0.75rem", marginTop: "0.5rem", letterSpacing: "0.05em" }}>OGEFREM</div>
+              )}
+              <NavLink
+                href="/"
+                icon={<LayoutDashboard size={20} />}
+                label="Dashboard"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
+                href="/reports"
+                icon={<FileDigitIcon size={20} />}
+                label="Reports"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/reports"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
+                href="/analytics"
+                icon={<BarChart3 size={20} />}
+                label="Analytics"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/analytics"}
                 onClick={() => isMobile && setIsMobileMenuOpen(false)}
               />
             </>

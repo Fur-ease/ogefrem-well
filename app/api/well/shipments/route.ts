@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getWellShipments, createWellShipment } from "@/server/well/well-shipment.service";
 import { logActivity } from "@/server/well/activity.service";
+import { createWellShipmentSchema } from "@/lib/schemas";
+import { sanitizeObject } from "@/lib/sanitizer";
 
 export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
@@ -30,8 +32,16 @@ export async function POST(request: Request) {
     }
 
     try {
-        const data = await request.json();
-        const shipment = await createWellShipment(data, session.user.id);
+        const body = await request.json();
+
+        // Validate input
+        const validation = createWellShipmentSchema.safeParse(body);
+        if (!validation.success) {
+            return NextResponse.json({ error: "Invalid data", details: validation.error.format() }, { status: 400 });
+        }
+
+        const sanitizedData = sanitizeObject(validation.data);
+        const shipment = await createWellShipment(sanitizedData, session.user.id);
 
         await logActivity(
             session.user.id,

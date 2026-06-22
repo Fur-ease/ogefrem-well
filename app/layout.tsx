@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { ClientLayout } from "@/components/ClientLayout";
 import { Providers } from "@/components/Providers";
+import SessionTimeout from "@/components/auth/SessionTimeout";
 
 export const metadata: Metadata = {
   title: "WESTON — Shipment Management",
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <Providers>
+          <SessionTimeout />
           <ClientLayout>
             {children}
           </ClientLayout>

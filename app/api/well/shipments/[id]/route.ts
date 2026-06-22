@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getWellShipmentById, updateWellShipment } from "@/server/well/well-shipment.service";
 import { logActivity } from "@/server/well/activity.service";
+import { updateWellShipmentSchema } from "@/lib/schemas";
+import { sanitizeObject } from "@/lib/sanitizer";
 
 export async function GET(
     request: Request,
@@ -35,7 +37,13 @@ export async function PATCH(
     const { id } = await params;
 
     try {
-        const data = await request.json();
+        const body = await request.json();
+        const validation = updateWellShipmentSchema.safeParse(body);
+        if (!validation.success) {
+            return NextResponse.json({ error: "Invalid data", details: validation.error.format() }, { status: 400 });
+        }
+
+        const data = sanitizeObject(validation.data);
         const shipment = await updateWellShipment(id, data);
 
         await logActivity(
