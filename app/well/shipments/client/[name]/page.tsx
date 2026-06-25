@@ -7,6 +7,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import Breadcrumbs from "@/components/well/Breadcrumbs";
+import { apis } from "@/lib/api/apis";
 
 export default function WellClientShipmentsPage() {
     const { name } = useParams();
@@ -16,8 +17,7 @@ export default function WellClientShipmentsPage() {
     const clientName = decodeURIComponent(name as string);
 
     useEffect(() => {
-        fetch(`/api/well/clients/${name}/shipments`)
-            .then((res) => res.json())
+        apis.well.getClientShipments(name as string)
             .then((data) => {
                 setShipments(data);
                 setLoading(false);

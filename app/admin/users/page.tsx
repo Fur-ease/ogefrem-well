@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, ShieldAlert, UserCog, Ban, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { apis } from "@/lib/api/apis";
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -20,8 +21,7 @@ export default function AdminUsersPage() {
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch("/api/users");
-            const data = await res.json();
+            const data = await apis.users.getUsers();
             setUsers(data);
         } catch {
             toast.error("Failed to fetch users");
@@ -38,17 +38,7 @@ export default function AdminUsersPage() {
         e.preventDefault();
         const tId = toast.loading("Creating user...");
         try {
-            const res = await fetch("/api/users", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newUser),
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error);
-            }
-
+            await apis.users.createUser(newUser);
             toast.success("User created", { id: tId });
             setNewUser({ username: "", email: "", password: "", role: "USER", department: "WELL" });
             fetchUsers();
@@ -60,12 +50,7 @@ export default function AdminUsersPage() {
     const toggleSuspend = async (id: string, currentStatus: boolean) => {
         const tId = toast.loading("Updating status...");
         try {
-            const res = await fetch(`/api/users/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ isSuspended: !currentStatus }),
-            });
-            if (!res.ok) throw new Error("Update failed");
+            await apis.users.updateUser(id, { isSuspended: !currentStatus });
             toast.success(currentStatus ? "User reactivated" : "User suspended", { id: tId });
             fetchUsers();
         } catch (error) {
@@ -75,11 +60,7 @@ export default function AdminUsersPage() {
 
     const updateDepartment = async (id: string, department: string) => {
         try {
-            await fetch(`/api/users/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ department }),
-            });
+            await apis.users.updateUser(id, { department });
             toast.success("Department changed");
             fetchUsers();
         } catch (error) {

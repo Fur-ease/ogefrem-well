@@ -5,25 +5,23 @@ import { Loader2, Search, Filter, User, Package, CheckCircle, Clock } from "luci
 import Link from "next/link";
 import { toast } from "sonner";
 import Breadcrumbs from "@/components/well/Breadcrumbs";
+import { apis } from "@/lib/api/apis";
 
 export default function WellShipmentsListPage() {
     const [clients, setClients] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
 
-    const fetchClients = (q?: string) => {
+    const fetchClients = async (q?: string) => {
         setLoading(true);
-        const url = q ? `/api/well/clients?q=${encodeURIComponent(q)}` : "/api/well/clients";
-        fetch(url)
-            .then((res) => res.json())
-            .then((data) => {
-                setClients(data);
-                setLoading(false);
-            })
-            .catch(() => {
-                toast.error("Failed to load client data");
-                setLoading(false);
-            });
+        try {
+            const data = await apis.well.getClients(q);
+            setClients(data);
+        } catch (error) {
+            toast.error("Failed to load client data");
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {

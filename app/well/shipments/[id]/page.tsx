@@ -7,6 +7,7 @@ import { Loader2, ArrowLeft, Upload, FileText, Trash2, Save, Download, Eye, X, P
 import Link from "next/link";
 import { format } from "date-fns";
 import Breadcrumbs from "@/components/well/Breadcrumbs";
+import { apis } from "@/lib/api/apis";
 
 export default function WellShipmentDetailPage() {
     const { id } = useParams();
@@ -28,9 +29,7 @@ export default function WellShipmentDetailPage() {
 
     const fetchShipment = async () => {
         try {
-            const res = await fetch(`/api/well/shipments/${id}`);
-            if (!res.ok) throw new Error("Failed to fetch shipment");
-            const data = await res.json();
+            const data = await apis.well.getShipment(id as string);
             setShipment(data);
 
             const formattedData = { ...data };
@@ -68,13 +67,7 @@ export default function WellShipmentDetailPage() {
         if (e) e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch(`/api/well/shipments/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            });
-
-            if (!res.ok) throw new Error("Failed to update shipment");
+            await apis.well.updateShipment(id as string, formData);
             toast.success("Shipment updated");
             fetchShipment();
         } catch (error) {
@@ -125,12 +118,7 @@ export default function WellShipmentDetailPage() {
         fd.append("type", docType);
 
         try {
-            const res = await fetch(`/api/well/shipments/${id}/documents`, {
-                method: "POST",
-                body: fd,
-            });
-
-            if (!res.ok) throw new Error("Upload failed");
+            await apis.well.uploadDocument(id as string, fd);
             toast.success("Document uploaded successfully");
             fetchShipment();
         } catch (error) {
@@ -146,10 +134,7 @@ export default function WellShipmentDetailPage() {
 
         const tId = toast.loading("Deleting document...");
         try {
-            const res = await fetch(`/api/well/shipments/${id}/documents/${docId}`, {
-                method: "DELETE",
-            });
-            if (!res.ok) throw new Error("Delete failed");
+            await apis.well.deleteDocument(id as string, docId);
             toast.success("Document deleted", { id: tId });
             fetchShipment();
         } catch (error) {
@@ -161,10 +146,7 @@ export default function WellShipmentDetailPage() {
         setExporting(true);
         const tId = toast.loading("Generating Excel report...");
         try {
-            const res = await fetch(`/api/well/shipments/${id}/export`);
-            if (!res.ok) throw new Error("Export failed");
-
-            const blob = await res.blob();
+            const blob = await apis.well.exportShipment(id as string);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;

@@ -5,10 +5,11 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Loader2, User, Lock, Save, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
+import { apis } from "@/lib/api/apis";
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
-  
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,24 +37,14 @@ export default function ProfilePage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (res.ok) {
-        toast.success("Profile updated successfully");
-        setPassword("");
-        setConfirmPassword("");
-        // Optimistically update session
-        await update({ name: username });
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Something went wrong");
-      }
-    } catch (error) {
-      toast.error("Something went wrong");
+      await apis.users.updateProfile({ username, password });
+      toast.success("Profile updated successfully");
+      setPassword("");
+      setConfirmPassword("");
+      // Optimistically update session
+      await update({ name: username });
+    } catch (error: any) {
+      toast.error(error.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -106,15 +97,15 @@ export default function ProfilePage() {
               <p style={{ color: "hsl(var(--text-muted))", fontSize: "0.9rem", margin: 0 }}>
                 {session?.user?.email}
               </p>
-              <div style={{ 
-                display: "inline-block", 
+              <div style={{
+                display: "inline-block",
                 marginTop: "0.5rem",
-                padding: "2px 8px", 
-                borderRadius: "12px", 
-                fontSize: "0.75rem", 
-                fontWeight: 600, 
-                backgroundColor: "rgba(56, 189, 248, 0.1)", 
-                color: "hsl(var(--primary))" 
+                padding: "2px 8px",
+                borderRadius: "12px",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                backgroundColor: "rgba(56, 189, 248, 0.1)",
+                color: "hsl(var(--primary))"
               }}>
                 Role: {session?.user?.role || "USER"}
               </div>
@@ -123,7 +114,7 @@ export default function ProfilePage() {
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          
+
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             <label style={{ fontSize: "0.875rem", fontWeight: 500, color: "hsl(var(--text-secondary))" }}>
               Username

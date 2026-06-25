@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, PackagePlus, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { apis } from "@/lib/api/apis";
 
 export default function NewWellShipmentPage() {
     const router = useRouter();
@@ -55,19 +56,7 @@ export default function NewWellShipmentPage() {
         setLoading(true);
 
         try {
-            // Include containers in the payload
-            const res = await fetch("/api/well/shipments", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.error || "Failed to create shipment");
-            }
-
-            const shipment = await res.json();
+            const shipment = await apis.well.createShipment(formData);
             toast.success(`Shipment created successfully. Ref: ${shipment.refNumber}`);
             router.push(`/well/shipments/${shipment.id}`);
         } catch (error: any) {

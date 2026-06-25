@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import Breadcrumbs from "@/components/well/Breadcrumbs";
+import { apis } from "@/lib/api/apis";
 import { WellQuotation } from "@/components/well/WellQuotation";
 import { WellReceipt } from "@/components/well/WellReceipt";
 
@@ -79,8 +80,7 @@ export default function WellFinancePage() {
     const fetchAll = async () => {
         try {
             setLoading(true);
-            const res = await fetch("/api/well/shipments");
-            const data = await res.json();
+            const data = await apis.well.getShipments();
 
             setShipments(data.filter((s: any) => s.status === "PCHARGES" && !s.isPaid));
             setPaidShipments(data.filter((s: any) => s.isPaid));
@@ -110,14 +110,7 @@ export default function WellFinancePage() {
 
         const tId = toast.loading("Marking as paid...");
         try {
-            const res = await fetch(`/api/well/finance/${id}/pay`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ amount: currentAmount }),
-            });
-            if (!res.ok) throw new Error("Failed");
-
-            const updated = await res.json();
+            const updated = await apis.well.payFinance(id, { amount: currentAmount });
             toast.success("Shipment cleared successfully", { id: tId });
             setActiveReceipt(updated);
             fetchAll();

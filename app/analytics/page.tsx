@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { Printer, Calendar, TrendingUp, Package, DollarSign, Download } from "lucide-react";
+import { apis } from "@/lib/api/apis";
 
 export default function AnalyticsPage() {
     const [data, setData] = useState<any>(null);
@@ -27,12 +28,10 @@ export default function AnalyticsPage() {
     const fetchAnalytics = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/analytics?months=${months}`);
-            const json = await res.json();
-            if (res.ok) setData(json.data);
-            else toast.error("Failed to load analytics");
+            const json = await apis.analytics.get(months);
+            setData(json);
         } catch {
-            toast.error("Network error");
+            toast.error("Failed to load analytics");
         } finally {
             setLoading(false);
         }

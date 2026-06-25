@@ -4,6 +4,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { FileDown, Eye, FileText, AlertCircle } from "lucide-react";
+import { apis } from "@/lib/api/apis";
 
 export default function ReportsPage() {
     const [month, setMonth] = useState("");
@@ -11,6 +12,7 @@ export default function ReportsPage() {
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [exportingExcel, setExportingExcel] = useState(false);
+    const [exportingRecon, setExportingRecon] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
@@ -22,16 +24,11 @@ export default function ReportsPage() {
         setCurrentPage(1); // Reset to first page on new fetch
 
         try {
-            const res = await fetch(`/api/reports/summary?month=${month}`);
-            const json = await res.json();
-            if (!res.ok) {
-                toast.error(json.error || "Failed to fetch report");
-            } else {
-                setReport(json.data);
-                toast.success("Report data loaded");
-            }
-        } catch {
-            toast.error("Failed to fetch report");
+            const res = await apis.reports.getSummary(month);
+            setReport(res.data);
+            toast.success("Report data loaded");
+        } catch (err: any) {
+            toast.error(err.message || "Failed to fetch report");
         } finally {
             setLoading(false);
         }
@@ -46,18 +43,7 @@ export default function ReportsPage() {
         setExporting(true);
         const tId = toast.loading("Generating your report...");
         try {
-            const res = await fetch("/api/reports/export", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ month }),
-            });
-
-            if (!res.ok) {
-                const json = await res.json();
-                throw new Error(json.error || "Export failed");
-            }
-
-            const blob = await res.blob();
+            const blob = await apis.reports.exportDocx(month);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -79,18 +65,7 @@ export default function ReportsPage() {
         setExportingExcel(true);
         const tId = toast.loading("Generating Excel report with QR code...");
         try {
-            const res = await fetch("/api/reports/export-excel", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ month }),
-            });
-
-            if (!res.ok) {
-                const json = await res.json();
-                throw new Error(json.error || "Export failed");
-            }
-
-            const blob = await res.blob();
+            const blob = await apis.reports.exportExcel(month);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -106,6 +81,30 @@ export default function ReportsPage() {
             toast.error(err.message || "Failed to export Excel", { id: tId });
         } finally {
             setExportingExcel(false);
+        }
+    }
+
+    async function handleExportRecon() {
+        if (!month) return;
+        setExportingRecon(true);
+        const tId = toast.loading("Generating reconciliation document...");
+        try {
+            const blob = await apis.reports.exportReconciliation(month);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            const [year, mon] = month.split("-").map(Number);
+            const monthLabel = format(new Date(year, mon - 1, 1), "MMMM_yyyy");
+            a.download = `Reconciliation_OGEFREM_WELL_${monthLabel}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success("Reconciliation doc downloaded!", { id: tId });
+        } catch (err: any) {
+            toast.error(err.message || "Failed to export Reconciliation Doc", { id: tId });
+        } finally {
+            setExportingRecon(false);
         }
     }
 
@@ -137,6 +136,9 @@ export default function ReportsPage() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "1rem" }}>
                         <h2 style={{ fontSize: "1.25rem", fontWeight: 600 }}>Summary for {format(new Date(month + "-01"), "MMMM yyyy")}</h2>
                         <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <button onClick={handleExportRecon} className="btn btn-secondary" disabled={exportingRecon} style={{ gap: "0.5rem", background: "hsl(var(--primary))", color: "white", borderColor: "hsl(var(--primary))" }}>
+                                {exportingRecon ? "Generating..." : <><FileText size={18} /> Reconciliation Doc</>}
+                            </button>
                             <button onClick={handleExportExcel} className="btn btn-secondary" disabled={exportingExcel} style={{ gap: "0.5rem", background: "hsl(var(--success))", color: "white", borderColor: "hsl(var(--success))" }}>
                                 {exportingExcel ? "Generating..." : <><FileDown size={18} /> Export Excel (QR)</>}
                             </button>

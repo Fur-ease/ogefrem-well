@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Download, FileSpreadsheet, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { apis } from "@/lib/api/apis";
 import { StatusBadge } from "@/components/StatusBadge";
 import Breadcrumbs from "@/components/well/Breadcrumbs";
 
@@ -16,8 +17,7 @@ export default function WellCargoPage() {
     const [appliedSearchTerm, setAppliedSearchTerm] = useState("");
 
     useEffect(() => {
-        fetch("/api/well/cargo")
-            .then(res => res.json())
+        apis.well.getCargo()
             .then(data => {
                 setShipments(data);
                 setLoading(false);
@@ -53,10 +53,7 @@ export default function WellCargoPage() {
         setExporting(true);
         const tId = toast.loading("Generating Excel report...");
         try {
-            const res = await fetch("/api/well/cargo/export");
-            if (!res.ok) throw new Error("Export failed");
-
-            const blob = await res.blob();
+            const blob = await apis.well.exportCargo();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;

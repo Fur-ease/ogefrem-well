@@ -18,6 +18,7 @@ type DocumentType = keyof typeof DocumentType;
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { Upload, FileUp } from "lucide-react";
+import { apis } from "@/lib/api/apis";
 
 interface Props {
     shipmentId: string;
@@ -63,22 +64,13 @@ export function DocumentUpload({ shipmentId, allowedTypes, onSuccess }: Props) {
         formData.append("type", type);
 
         try {
-            const res = await fetch(`/api/shipments/${shipmentId}/documents`, {
-                method: "POST",
-                body: formData,
-            });
-
-            const json = await res.json();
-            if (!res.ok) {
-                toast.error(json.error || "Upload failed", { id: tId });
-            } else {
-                toast.success(files.length > 1 ? `${files.length} documents uploaded successfully` : `${DOC_LABELS[type]} uploaded successfully`, { id: tId });
-                setFiles([]);
-                if (fileRef.current) fileRef.current.value = "";
-                onSuccess?.();
-            }
-        } catch {
-            toast.error("Network error. Please try again.", { id: tId });
+            await apis.shipments.uploadDocument(shipmentId, formData);
+            toast.success(files.length > 1 ? `${files.length} documents uploaded successfully` : `${DOC_LABELS[type]} uploaded successfully`, { id: tId });
+            setFiles([]);
+            if (fileRef.current) fileRef.current.value = "";
+            onSuccess?.();
+        } catch (err: any) {
+            toast.error(err.message || "Upload failed", { id: tId });
         } finally {
             setUploading(false);
         }

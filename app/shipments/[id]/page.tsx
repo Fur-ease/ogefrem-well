@@ -31,6 +31,7 @@ import { FinancialSummary } from "@/components/FinancialSummary";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { apis } from "@/lib/api/apis";
 import {
     Trash2,
     Download,
@@ -83,12 +84,10 @@ export default function ShipmentDetailPage() {
 
     const fetchShipment = async () => {
         try {
-            const res = await fetch(`/api/shipments/${params.id}`);
-            const json = await res.json();
-            if (res.ok) setShipment(json.data);
-            else setError(json.error);
-        } catch {
-            setError("Failed to fetch shipment");
+            const data = await apis.shipments.getShipment(params.id as string);
+            setShipment(data);
+        } catch (err: any) {
+            setError(err.message || "Failed to fetch shipment");
         } finally {
             setLoading(false);
         }
@@ -115,22 +114,12 @@ export default function ShipmentDetailPage() {
         setActionLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/shipments/${params.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, ...payload }),
-            });
-            const json = await res.json();
-            if (!res.ok) {
-                toast.error(json.error || "Action failed", { id: tId });
-                setError(json.error);
-            } else {
-                toast.success("Action completed successfully", { id: tId });
-                await fetchShipment();
-            }
-        } catch {
-            toast.error("Network error. Please try again.", { id: tId });
-            setError("Action failed. Please try again.");
+            await apis.shipments.updateShipment(params.id as string, action, payload);
+            toast.success("Action completed successfully", { id: tId });
+            await fetchShipment();
+        } catch (err: any) {
+            toast.error(err.message || "Action failed", { id: tId });
+            setError(err.message);
         } finally {
             setActionLoading(false);
         }
@@ -146,8 +135,7 @@ export default function ShipmentDetailPage() {
                 toast.loading("Communicating with KRA TIMS...", { id: tId });
 
                 // Get official next invoice number
-                const numRes = await fetch("/api/invoices/next-number");
-                const numData = await numRes.json();
+                const numData = await apis.shipments.getNextInvoiceNumber();
                 const officialInvNum = numData.nextNumber || (shipment?.id.slice(-8).toUpperCase());
 
                 const timsResult = await processTimsInvoice(
@@ -179,22 +167,13 @@ export default function ShipmentDetailPage() {
                 }
             }
 
-            const res = await fetch(`/api/shipments/${params.id}/invoice`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...invoiceForm,
-                    ...timsData
-                }),
+            const data = await apis.shipments.finalizeInvoice(params.id as string, {
+                ...invoiceForm,
+                ...timsData
             });
-            const json = await res.json();
-            if (!res.ok) {
-                toast.error(json.error || "Failed to finalize invoice", { id: tId });
-            } else {
-                toast.success("Invoice finalized!", { id: tId });
-                setShowInvoiceModal(false);
-                await fetchShipment();
-            }
+            toast.success("Invoice finalized!", { id: tId });
+            setShowInvoiceModal(false);
+            await fetchShipment();
         } catch (error) {
             console.error("Finalize error:", error);
             toast.error("Network error", { id: tId });
@@ -257,7 +236,7 @@ export default function ShipmentDetailPage() {
         if (!confirm("Are you sure you want to delete this document?")) return;
         const tId = toast.loading("Deleting document...");
         try {
-            await fetch(`/api/shipments/${params.id}/documents/${docId}`, { method: "DELETE" });
+            await apis.shipments.deleteDocument(params.id as string, docId);
             toast.success("Document deleted", { id: tId });
             await fetchShipment();
         } catch {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Loader2, Mail, ArrowLeft, Send } from "lucide-react";
+import { apis } from "@/lib/api/apis";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -15,21 +16,11 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      if (res.ok) {
-        setSubmitted(true);
-        toast.success("Reset link sent");
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Something went wrong");
-      }
-    } catch (error) {
-      toast.error("Something went wrong");
+      await apis.auth.forgotPassword(email);
+      setSubmitted(true);
+      toast.success("Reset link sent");
+    } catch (error: any) {
+      toast.error(error.message || "Something went wrong");
     } finally {
       setLoading(false);
     }

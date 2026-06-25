@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, ArrowLeft, BarChart3, TrendingUp, AlertCircle, DollarSign, Package, User } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { apis } from "@/lib/api/apis";
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     LineChart, Line, AreaChart, Area
@@ -15,8 +16,7 @@ export default function WellAnalyticsPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/api/well/analytics")
-            .then(res => res.json())
+        apis.well.getAnalytics()
             .then(d => {
                 setData(d);
                 setLoading(false);

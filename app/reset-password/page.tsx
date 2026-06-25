@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Loader2, Lock, ArrowRight, CheckCircle2 } from "lucide-react";
+import { apis } from "@/lib/api/apis";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -32,7 +33,7 @@ function ResetPasswordForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -46,21 +47,11 @@ function ResetPasswordForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
-      });
-
-      if (res.ok) {
-        setSuccess(true);
-        toast.success("Password updated successfully");
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Something went wrong");
-      }
-    } catch (error) {
-      toast.error("Something went wrong");
+      await apis.auth.resetPassword({ token, password });
+      setSuccess(true);
+      toast.success("Password updated successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Something went wrong");
     } finally {
       setLoading(false);
     }

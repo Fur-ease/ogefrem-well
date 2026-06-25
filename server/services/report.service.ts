@@ -447,3 +447,192 @@ export async function exportMonthlyExcel(month: string): Promise<Buffer> {
     logger.info({ month, rows: report.rows.length }, "Excel report exported with QR code");
     return buffer;
 }
+
+export async function exportReconciliationDocx(month: string): Promise<Buffer> {
+    const report = await getMonthlySummary(month);
+    const [year, mon] = month.split("-").map(Number);
+    const monthLabel = format(new Date(year, mon - 1, 1), "MMMM yyyy");
+
+    const proformaList = report.rows
+        .map(r => r.proforma)
+        .filter(p => p && p.trim().length > 0)
+        .join(", ");
+
+    const qrBuffer = await QRCode.toBuffer(proformaList || "No Proformas Found", {
+        margin: 1,
+        width: 250,
+    });
+
+    const barcodeLabelBuffer = await bwipjs.toBuffer({
+        bcid: 'code128',
+        text: `REPORT-${month}`,
+        scale: 2,
+        height: 10,
+        includetext: true,
+        textxalign: 'center',
+    });
+
+    const cell = (text: string, bold = false, align: any = AlignmentType.CENTER, colSpan = 1) => new TableCell({
+        children: [
+            new Paragraph({
+                alignment: align,
+                children: [
+                    new TextRun({
+                        text: String(text),
+                        bold: bold,
+                        size: 18,
+                        font: "Calibri",
+                    }),
+                ],
+            }),
+        ],
+        columnSpan: colSpan,
+        borders: {
+            top: { style: BorderStyle.SINGLE, size: 1 },
+            bottom: { style: BorderStyle.SINGLE, size: 1 },
+            left: { style: BorderStyle.SINGLE, size: 1 },
+            right: { style: BorderStyle.SINGLE, size: 1 },
+        },
+    });
+
+    const headerRow = new TableRow({
+        children: [
+            cell("CLIENT", true),
+            cell("FERI", true),
+            cell("PROFORMA", true),
+            cell("FERRI EUR", true),
+            cell("CUR EXC", true),
+            cell("FERRI USD", true),
+            cell("OGEFREM REV", true),
+        ],
+    });
+
+    const dataRows = report.rows.map(r => new TableRow({
+        children: [
+            cell(r.client, false, AlignmentType.LEFT),
+            cell(r.feri),
+            cell(r.proforma),
+            cell(r.ferriEUR.toFixed(2), false, AlignmentType.RIGHT),
+            cell(r.curExc.toFixed(4), false, AlignmentType.RIGHT),
+            cell(r.ferriUSD.toFixed(2), false, AlignmentType.RIGHT),
+            cell(r.ogefremRev.toFixed(2), false, AlignmentType.RIGHT),
+        ],
+    }));
+
+    const totalsRow = new TableRow({
+        children: [
+            cell("TOTALS", true, AlignmentType.LEFT),
+            cell(""),
+            cell(""),
+            cell(report.totals.ferriEUR.toFixed(2), true, AlignmentType.RIGHT),
+            cell(""),
+            cell(report.totals.ferriUSD.toFixed(0), true, AlignmentType.RIGHT),
+            cell(report.totals.ogefremRev.toFixed(2), true, AlignmentType.RIGHT),
+        ],
+    });
+
+    const allTotalValue = (report.totals.ferriUSD + report.totals.ogefremRev).toFixed(0);
+    const allTotalRow = new TableRow({
+        children: [
+            cell("ALL TOTAL", true, AlignmentType.LEFT),
+            cell("", false, AlignmentType.CENTER, 4),
+            cell(allTotalValue, true, AlignmentType.RIGHT, 2),
+        ],
+    });
+
+    const bankDetailsRow = new TableRow({
+        children: [
+            cell("BANK DETAILS: ACC NAME: OGEFREM; ACC NUMBER: 02402070004; BANKOFAFRICA; SWIFTCODE: AFRIKENXXX;", true, AlignmentType.CENTER, 7),
+        ],
+    });
+
+    const table = new Table({
+        rows: [headerRow, ...dataRows, totalsRow, allTotalRow, bankDetailsRow],
+        width: { size: 100, type: WidthType.PERCENTAGE },
+    });
+
+    const doc = new DocxDocument({
+        sections: [
+            {
+                children: [
+                    new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                            new TextRun({
+                                text: `OGEFREM -- WELL Monthly Report`,
+                                bold: true,
+                                size: 32,
+                                font: "Calibri",
+                            }),
+                        ],
+                    }),
+                    new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                            new TextRun({
+                                text: monthLabel,
+                                size: 24,
+                                font: "Calibri",
+                            }),
+                        ],
+                    }),
+                    new Paragraph({ children: [new TextRun({ text: "" })] }),
+                    table,
+                    new Paragraph({ children: [new TextRun({ text: "" })] }),
+                    new Paragraph({ children: [new TextRun({ text: "" })] }),
+                    new Table({
+                        width: { size: 100, type: WidthType.PERCENTAGE },
+                        borders: {
+                            top: { style: BorderStyle.NONE },
+                            bottom: { style: BorderStyle.NONE },
+                            left: { style: BorderStyle.NONE },
+                            right: { style: BorderStyle.NONE },
+                            insideHorizontal: { style: BorderStyle.NONE },
+                            insideVertical: { style: BorderStyle.NONE },
+                        },
+                        rows: [
+                            new TableRow({
+                                children: [
+                                    new TableCell({
+                                        width: { size: 50, type: WidthType.PERCENTAGE },
+                                        children: [
+                                            new Paragraph({
+                                                alignment: AlignmentType.LEFT,
+                                                children: [
+                                                    new ImageRun({
+                                                        data: qrBuffer as any,
+                                                        transformation: { width: 100, height: 100 },
+                                                        type: "png",
+                                                    } as any),
+                                                ],
+                                            }),
+                                        ],
+                                    }),
+                                    new TableCell({
+                                        width: { size: 50, type: WidthType.PERCENTAGE },
+                                        children: [
+                                            new Paragraph({
+                                                alignment: AlignmentType.RIGHT,
+                                                children: [
+                                                    new ImageRun({
+                                                        data: barcodeLabelBuffer as any,
+                                                        transformation: { width: 150, height: 40 },
+                                                        type: "png",
+                                                    } as any),
+                                                ],
+                                            }),
+                                        ],
+                                    }),
+                                ],
+                            }),
+                        ],
+                    }),
+                ],
+            },
+        ],
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+    logger.info({ month, rows: report.rows.length }, "Reconciliation DOCX report exported");
+    return buffer;
+}

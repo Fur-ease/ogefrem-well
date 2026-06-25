@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PlusCircle } from "lucide-react";
+import { apis } from "@/lib/api/apis";
 
 export default function NewShipmentPage() {
     const router = useRouter();
@@ -20,22 +21,11 @@ export default function NewShipmentPage() {
         setLoading(true);
 
         try {
-            const res = await fetch("/api/shipments", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(form),
-            });
-
-            const json = await res.json();
-
-            if (!res.ok) {
-                toast.error(json.error || "Failed to create shipment");
-            } else {
-                toast.success("Shipment created successfully!");
-                router.push(`/shipments/${json.data.id}`);
-            }
-        } catch (err) {
-            toast.error("Network error. Please try again.");
+            const json = await apis.shipments.createShipment(form);
+            toast.success("Shipment created successfully!");
+            router.push(`/shipments/${json.data.id}`);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to create shipment");
         } finally {
             setLoading(false);
         }

@@ -3,16 +3,19 @@
 import { useEffect, useState } from "react";
 import { Loader2, Activity } from "lucide-react";
 import { format } from "date-fns";
+import { apis } from "@/lib/api/apis";
 
 export default function ActivityLogsPage() {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/api/activity-logs?limit=200")
-            .then(res => res.json())
+        apis.activityLogs.list(200)
             .then(data => {
                 setLogs(data);
+                setLoading(false);
+            })
+            .catch(() => {
                 setLoading(false);
             });
     }, []);
