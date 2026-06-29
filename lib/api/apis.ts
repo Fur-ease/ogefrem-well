@@ -17,7 +17,8 @@ async function handleResponse(res: Response) {
     }
     const contentType = res.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
-        return res.json();
+        const json = await res.json();
+        return json.data !== undefined ? json.data : json;
     }
     // Return blob for files (DOCX, XLSX, PDF)
     return res.blob();
