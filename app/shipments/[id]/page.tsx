@@ -246,7 +246,7 @@ export default function ShipmentDetailPage() {
 
 
     const openAllDocs = () => {
-        const activeDocs = shipment?.documents.filter((d: any) => !d.isReplaced) || [];
+        const activeDocs = shipment?.documents?.filter((d: any) => !d.isReplaced) || [];
         if (activeDocs.length === 0) return toast.error("No documents to open");
 
         activeDocs.forEach((doc: any, i: any) => {
@@ -456,9 +456,9 @@ export default function ShipmentDetailPage() {
 
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
                             <h4 style={{ fontSize: "0.8rem", color: "hsl(var(--text-muted))", textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>
-                                Files ({shipment.documents.filter((d: any) => !d.isReplaced).length})
+                                Files ({shipment.documents?.filter((d: any) => !d.isReplaced).length || 0})
                             </h4>
-                            {shipment.documents.filter((d: any) => !d.isReplaced).length > 1 && (
+                            {(shipment.documents?.filter((d: any) => !d.isReplaced).length || 0) > 1 && (
                                 <button
                                     onClick={openAllDocs}
                                     className="btn btn-ghost btn-sm"
@@ -470,10 +470,10 @@ export default function ShipmentDetailPage() {
                         </div>
 
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                            {shipment.documents.length === 0 && (
+                            {(!shipment.documents || shipment.documents.length === 0) && (
                                 <div style={{ color: "hsl(var(--text-muted))", fontSize: "0.875rem", fontStyle: "italic" }}>No documents uploaded.</div>
                             )}
-                            {shipment.documents.map((doc: any) => (
+                            {(shipment.documents || []).map((doc: any) => (
                                 <div
                                     key={doc.id}
                                     style={{

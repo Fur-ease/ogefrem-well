@@ -16,7 +16,7 @@ const STATUS_CONFIG: Record<
 };
 
 export function StatusBadge({ status }: { status: ShipmentStatus }) {
-    const cfg = STATUS_CONFIG[status];
+    const cfg = STATUS_CONFIG[status] || { label: status || "Unknown", className: "badge badge-new" };
     return (
         <span className={cfg.className}>
             <Circle size={6} fill="currentColor" />
