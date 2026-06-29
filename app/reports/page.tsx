@@ -25,7 +25,7 @@ export default function ReportsPage() {
 
         try {
             const res = await apis.reports.getSummary(month);
-            setReport(res.data);
+            setReport(res);
             toast.success("Report data loaded");
         } catch (err: any) {
             toast.error(err.message || "Failed to fetch report");

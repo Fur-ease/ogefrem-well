@@ -5,7 +5,6 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { logger } from "@/lib/logger";
 import { ShipmentStatus } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import {
@@ -117,7 +116,7 @@ export async function getMonthlySummary(month: string): Promise<MonthlyReport> {
         musongo: round2(rows.reduce((sum, r) => sum + r.musongo, 0)),
     };
 
-    logger.info({ month, rowCount: rows.length }, "Monthly summary generated");
+    console.log("Monthly summary generated", { month, rowCount: rows.length });
     return { month, rows, totals };
 }
 
@@ -334,7 +333,7 @@ export async function exportMonthlyDocx(month: string): Promise<Buffer> {
     });
 
     const buffer = await Packer.toBuffer(doc);
-    logger.info({ month, rows: report.rows.length }, "DOCX report exported with barcode");
+    console.log("DOCX report exported with barcode", { month, rows: report.rows.length });
     return buffer;
 }
 
@@ -444,7 +443,7 @@ export async function exportMonthlyExcel(month: string): Promise<Buffer> {
     worksheet.getCell('P1').font = { bold: true };
 
     const buffer = await workbook.xlsx.writeBuffer() as unknown as Buffer;
-    logger.info({ month, rows: report.rows.length }, "Excel report exported with QR code");
+    console.log("Excel report exported with QR code", { month, rows: report.rows.length });
     return buffer;
 }
 
@@ -633,6 +632,6 @@ export async function exportReconciliationDocx(month: string): Promise<Buffer> {
     });
 
     const buffer = await Packer.toBuffer(doc);
-    logger.info({ month, rows: report.rows.length }, "Reconciliation DOCX report exported");
+    console.log("Reconciliation DOCX report exported", { month, rows: report.rows.length });
     return buffer;
 }
