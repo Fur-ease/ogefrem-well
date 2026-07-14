@@ -23,7 +23,7 @@ export default function NewShipmentPage() {
         try {
             const json = await apis.shipments.createShipment(form);
             toast.success("Shipment created successfully!");
-            router.push(`/shipments/${json.data.id}`);
+            router.push(`/shipments/${json.id}`);
         } catch (err: any) {
             toast.error(err.message || "Failed to create shipment");
         } finally {

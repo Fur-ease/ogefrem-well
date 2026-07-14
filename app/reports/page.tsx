@@ -154,7 +154,6 @@ export default function ReportsPage() {
                                 <thead>
                                     <tr>
                                         <th>Client</th>
-                                        <th>Date</th>
                                         <th>Feri</th>
                                         <th>Proforma</th>
                                         <th style={{ textAlign: "right" }}>Ferri EUR</th>
@@ -171,12 +170,11 @@ export default function ReportsPage() {
                                 </thead>
                                 <tbody>
                                     {report.rows.length === 0 ? (
-                                        <tr><td colSpan={14} style={{ textAlign: "center", padding: "3rem", color: "hsl(var(--text-muted))" }}>No completed shipments this month.</td></tr>
+                                        <tr><td colSpan={13} style={{ textAlign: "center", padding: "3rem", color: "hsl(var(--text-muted))" }}>No completed shipments this month.</td></tr>
                                     ) : (
                                         paginatedRows.map((r: any, i: number) => (
                                             <tr key={i}>
                                                 <td style={{ fontWeight: 500 }}>{r.client}</td>
-                                                <td>{r.date}</td>
                                                 <td>{r.feri}</td>
                                                 <td>{r.proforma}</td>
                                                 <td style={{ textAlign: "right" }}>{r.ferriEUR.toFixed(2)}</td>
@@ -196,7 +194,7 @@ export default function ReportsPage() {
                                 {report.rows.length > 0 && (
                                     <tfoot>
                                         <tr style={{ background: "hsl(var(--surface-2))", fontWeight: 700 }}>
-                                            <td colSpan={4}>TOTALS</td>
+                                            <td colSpan={3}>TOTALS</td>
                                             <td style={{ textAlign: "right" }}>{report.totals.ferriEUR.toFixed(2)}</td>
                                             <td style={{ textAlign: "right" }}>—</td>
                                             <td style={{ textAlign: "right" }}>{report.totals.ferriUSD.toFixed(2)}</td>

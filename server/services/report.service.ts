@@ -20,6 +20,7 @@ import {
     WidthType,
     BorderStyle,
     ImageRun,
+    PageOrientation,
 } from "docx";
 import { format } from "date-fns";
 import ExcelJS from "exceljs";
@@ -125,13 +126,22 @@ export async function getMonthlySummary(month: string): Promise<MonthlyReport> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COLUMNS = [
-    "CLIENT", "DATE", "FERI", "PROFORMA",
+    "CLIENT", "FERI", "PROFORMA",
     "FERRI EUR", "CUR EXC", "FERRI USD",
     "COMM EUR", "COMM USD", "AD USD", "TOTAL USD",
     "WELL REV", "OGEFREM REV", "MUSONGO",
 ];
 
-function cell(text: string, header = false): TableCell {
+function cell(text: string, header = false, index?: number): TableCell {
+    let widthSize = 8;
+    if (index === 0) {
+        widthSize = 16; // CLIENT gets more space
+    } else if (index === 1 || index === 2) {
+        widthSize = 10; // FERI, PROFORMA
+    } else {
+        widthSize = 6; // Number/Revenue columns
+    }
+
     return new TableCell({
         children: [
             new Paragraph({
@@ -140,25 +150,25 @@ function cell(text: string, header = false): TableCell {
                     new TextRun({
                         text: String(text),
                         bold: header,
-                        size: header ? 18 : 16,
+                        size: header ? 16 : 14, // 8pt and 7pt
                         font: "Calibri",
                     }),
                 ],
             }),
         ],
-        width: { size: Math.floor(100 / COLUMNS.length), type: WidthType.PERCENTAGE },
+        width: { size: widthSize, type: WidthType.PERCENTAGE },
         borders: {
-            top: { style: BorderStyle.SINGLE, size: 1 },
-            bottom: { style: BorderStyle.SINGLE, size: 1 },
-            left: { style: BorderStyle.SINGLE, size: 1 },
-            right: { style: BorderStyle.SINGLE, size: 1 },
+            top: { style: BorderStyle.SINGLE, size: 1, color: "555555" },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: "555555" },
+            left: { style: BorderStyle.SINGLE, size: 1, color: "555555" },
+            right: { style: BorderStyle.SINGLE, size: 1, color: "555555" },
         },
     });
 }
 
 function rowValues(r: ReportRow): string[] {
     return [
-        r.client, r.date, r.feri, r.proforma,
+        r.client, r.feri, r.proforma,
         r.ferriEUR.toFixed(2),
         r.curExc.toFixed(4),
         r.ferriUSD.toFixed(2),
@@ -174,7 +184,7 @@ function rowValues(r: ReportRow): string[] {
 
 function totalsValues(t: MonthlyReport["totals"]): string[] {
     return [
-        "TOTALS", "", "", "",
+        "TOTALS", "", "",
         t.ferriEUR.toFixed(2),
         "",
         t.ferriUSD.toFixed(2),
@@ -192,19 +202,19 @@ export async function exportMonthlyDocx(month: string): Promise<Buffer> {
     const report = await getMonthlySummary(month);
 
     const headerRow = new TableRow({
-        children: COLUMNS.map((c) => cell(c, true)),
+        children: COLUMNS.map((c, idx) => cell(c, true, idx)),
         tableHeader: true,
     });
 
     const dataRows = report.rows.map(
         (r) =>
             new TableRow({
-                children: rowValues(r).map((v) => cell(v)),
+                children: rowValues(r).map((v, idx) => cell(v, false, idx)),
             })
     );
 
     const totalRow = new TableRow({
-        children: totalsValues(report.totals).map((v) => cell(v, true)),
+        children: totalsValues(report.totals).map((v, idx) => cell(v, true, idx)),
     });
 
     const table = new Table({
@@ -235,98 +245,139 @@ export async function exportMonthlyDocx(month: string): Promise<Buffer> {
         textxalign: 'center',
     });
 
+    // Create the borderless bottom section
+    const bottomSectionTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+            insideHorizontal: { style: BorderStyle.NONE },
+            insideVertical: { style: BorderStyle.NONE },
+        },
+        rows: [
+            new TableRow({
+                children: [
+                    new TableCell({
+                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        borders: {
+                            top: { style: BorderStyle.NONE },
+                            bottom: { style: BorderStyle.NONE },
+                            left: { style: BorderStyle.NONE },
+                            right: { style: BorderStyle.NONE },
+                        },
+                        children: [
+                            new Paragraph({
+                                alignment: AlignmentType.LEFT,
+                                spacing: { after: 120 },
+                                children: [
+                                    new TextRun({
+                                        text: "QR Code — Proforma Numbers",
+                                        size: 16, // 8pt
+                                        bold: true,
+                                        font: "Calibri",
+                                        color: "555555",
+                                    }),
+                                ],
+                            }),
+                            new Paragraph({
+                                alignment: AlignmentType.LEFT,
+                                children: [
+                                    new ImageRun({
+                                        data: qrBuffer as any,
+                                        transformation: { width: 120, height: 120 },
+                                        type: "png",
+                                    } as any),
+                                ],
+                            }),
+                        ],
+                    }),
+                    new TableCell({
+                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        borders: {
+                            top: { style: BorderStyle.NONE },
+                            bottom: { style: BorderStyle.NONE },
+                            left: { style: BorderStyle.NONE },
+                            right: { style: BorderStyle.NONE },
+                        },
+                        children: [
+                            new Paragraph({
+                                alignment: AlignmentType.RIGHT,
+                                spacing: { after: 120 },
+                                children: [
+                                    new TextRun({
+                                        text: `Generated: ${format(new Date(), "dd/MM/yyyy HH:mm")}`,
+                                        size: 14, // 7pt
+                                        font: "Calibri",
+                                        color: "888888",
+                                    }),
+                                ],
+                            }),
+                            new Paragraph({
+                                alignment: AlignmentType.RIGHT,
+                                children: [
+                                    new ImageRun({
+                                        data: barcodeLabelBuffer as any,
+                                        transformation: { width: 180, height: 35 },
+                                        type: "png",
+                                    } as any),
+                                ],
+                            }),
+                        ],
+                    }),
+                ],
+            }),
+        ],
+    });
+
     const doc = new DocxDocument({
         sections: [
             {
+                properties: {
+                    page: {
+                        size: {
+                            orientation: PageOrientation.LANDSCAPE,
+                            width: 16838, // A4 landscape width in dxa
+                            height: 11906, // A4 landscape height in dxa
+                        },
+                        margin: {
+                            top: 1008, // Margins: ~0.7 inch (1008 dxa) for landscape
+                            bottom: 1008,
+                            left: 1008,
+                            right: 1008,
+                        },
+                    },
+                },
                 children: [
                     new Paragraph({
-                        heading: HeadingLevel.HEADING_1,
                         alignment: AlignmentType.CENTER,
+                        spacing: { after: 120 },
                         children: [
                             new TextRun({
                                 text: `OGEFREM — WELL Monthly Report`,
                                 bold: true,
-                                size: 28,
+                                size: 28, // 14pt
                                 font: "Calibri",
+                                color: "1E60AE", // Royal blue style matching picture
                             }),
                         ],
                     }),
                     new Paragraph({
                         alignment: AlignmentType.CENTER,
+                        spacing: { after: 240 },
                         children: [
                             new TextRun({
                                 text: monthLabel,
-                                size: 22,
+                                size: 20, // 10pt
                                 font: "Calibri",
                                 color: "555555",
                             }),
                         ],
                     }),
-                    new Paragraph({ children: [new TextRun({ text: "" })] }),
                     table,
-                    new Paragraph({ children: [new TextRun({ text: "" })] }),
-                    new Paragraph({
-                        alignment: AlignmentType.RIGHT,
-                        children: [
-                            new TextRun({
-                                text: `Generated: ${format(new Date(), "dd/MM/yyyy HH:mm")}`,
-                                size: 14,
-                                color: "888888",
-                                font: "Calibri",
-                            }),
-                        ],
-                    }),
-                    // ── Bottom codes section ──────────────────────────────
-                    new Paragraph({ children: [new TextRun({ text: "" })] }),
-                    new Paragraph({ children: [new TextRun({ text: "" })] }),
-                    new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                            new TextRun({
-                                text: "QR Code — Proforma Numbers",
-                                size: 16,
-                                bold: true,
-                                font: "Calibri",
-                                color: "444444",
-                            }),
-                        ],
-                    }),
-                    new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                            new ImageRun({
-                                data: qrBuffer as any,
-                                transformation: { width: 120, height: 120 },
-                                type: "png",
-                            } as any),
-                        ],
-                    }),
-                    // spacer between QR and barcode
-                    new Paragraph({ children: [new TextRun({ text: "" })] }),
-                    new Paragraph({ children: [new TextRun({ text: "" })] }),
-                    new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                            new TextRun({
-                                text: "Report Barcode",
-                                size: 16,
-                                bold: true,
-                                font: "Calibri",
-                                color: "444444",
-                            }),
-                        ],
-                    }),
-                    new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                            new ImageRun({
-                                data: barcodeLabelBuffer as any,
-                                transformation: { width: 200, height: 50 },
-                                type: "png",
-                            } as any),
-                        ],
-                    }),
-                    new Paragraph({ children: [new TextRun({ text: "" })] }),
+                    new Paragraph({ spacing: { before: 480, after: 240 }, children: [new TextRun({ text: "" })] }),
+                    bottomSectionTable,
                 ],
             },
         ],
@@ -360,7 +411,6 @@ export async function exportMonthlyExcel(month: string): Promise<Buffer> {
     report.rows.forEach((r) => {
         worksheet.addRow([
             r.client,
-            r.date,
             r.feri,
             r.proforma,
             r.ferriEUR,
@@ -380,7 +430,6 @@ export async function exportMonthlyExcel(month: string): Promise<Buffer> {
     const totals = report.totals;
     const totalRow = worksheet.addRow([
         "TOTALS",
-        "",
         "",
         "",
         totals.ferriEUR,
@@ -404,10 +453,10 @@ export async function exportMonthlyExcel(month: string): Promise<Buffer> {
     // Format numbers
     for (let i = 2; i <= report.rows.length + 2; i++) {
         const row = worksheet.getRow(i);
-        [5, 7, 8, 9, 10, 11, 12, 13, 14].forEach(colIdx => {
+        [4, 6, 7, 8, 9, 10, 11, 12, 13].forEach(colIdx => {
             row.getCell(colIdx).numFmt = "#,##0.00";
         });
-        row.getCell(6).numFmt = "#,##0.0000"; // Exchange rate
+        row.getCell(5).numFmt = "#,##0.0000"; // Exchange rate
     }
 
     // Proforma numbers for QR Code
@@ -432,15 +481,15 @@ export async function exportMonthlyExcel(month: string): Promise<Buffer> {
     });
 
     // Place QR code on the right side of the table
-    // Table has 14 columns (A to N). We'll place it starting at P1 (column 16)
+    // Table has 13 columns (A to M). We'll place it starting at O1 (column 15)
     worksheet.addImage(imageId, {
-        tl: { col: 15, row: 1 },
+        tl: { col: 14, row: 1 },
         ext: { width: 180, height: 180 }
     });
 
     // Add a label for the QR code
-    worksheet.getCell('P1').value = "Proformas QR Code";
-    worksheet.getCell('P1').font = { bold: true };
+    worksheet.getCell('O1').value = "Proformas QR Code";
+    worksheet.getCell('O1').font = { bold: true };
 
     const buffer = await workbook.xlsx.writeBuffer() as unknown as Buffer;
     console.log("Excel report exported with QR code", { month, rows: report.rows.length });
