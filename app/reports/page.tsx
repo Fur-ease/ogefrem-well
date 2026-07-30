@@ -6,6 +6,16 @@ import { toast } from "sonner";
 import { FileDown, Eye, FileText, AlertCircle } from "lucide-react";
 import { apis } from "@/lib/api/apis";
 
+type IIFPreviewData = {
+    month: string;
+    included: Array<{ client: string; docnum: string; proforma: string; displayDate: string; amount: number; memo: string }>;
+    skipped: Array<{ client: string; docnum: string; displayDate: string; amount: number; skippedReason?: string }>;
+    totalAmount: number;
+    arAccount: string;
+    incomeAccount: string;
+    item: string;
+};
+
 export default function ReportsPage() {
     const [month, setMonth] = useState("");
     const [report, setReport] = useState<any>(null);
@@ -13,7 +23,9 @@ export default function ReportsPage() {
     const [exporting, setExporting] = useState(false);
     const [exportingExcel, setExportingExcel] = useState(false);
     const [exportingRecon, setExportingRecon] = useState(false);
-
+    const [iifPreview, setIifPreview] = useState<IIFPreviewData | null>(null);
+    const [loadingIIFPreview, setLoadingIIFPreview] = useState(false);
+    const [exportingIIF, setExportingIIF] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
 
@@ -31,6 +43,44 @@ export default function ReportsPage() {
             toast.error(err.message || "Failed to fetch report");
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handlePreviewIIF() {
+        if (!month) return;
+        setLoadingIIFPreview(true);
+        try {
+            const data = await apis.reports.previewIIF(month);
+            setIifPreview(data);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to preview IIF");
+        } finally {
+            setLoadingIIFPreview(false);
+        }
+    }
+
+    async function handleExportIIF() {
+        if (!month) return;
+        setExportingIIF(true);
+        const tId = toast.loading("Generating IIF file for QuickBooks import...");
+        try {
+            const blob = await apis.reports.exportIIF(month);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            const [year, mon] = month.split("-").map(Number);
+            const monthLabel = format(new Date(year, mon - 1, 1), "MMMM_yyyy");
+            a.download = `OGEFREM_WELL_Invoices_${monthLabel}.iif`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success("IIF file downloaded!", { id: tId });
+            setIifPreview(null); // close modal after download
+        } catch (err: any) {
+            toast.error(err.message || "Failed to export IIF", { id: tId });
+        } finally {
+            setExportingIIF(false);
         }
     }
 
@@ -142,6 +192,9 @@ export default function ReportsPage() {
                             <button onClick={handleExportExcel} className="btn btn-secondary" disabled={exportingExcel} style={{ gap: "0.5rem", background: "hsl(var(--success))", color: "white", borderColor: "hsl(var(--success))" }}>
                                 {exportingExcel ? "Generating..." : <><FileDown size={18} /> Export Excel (QR)</>}
                             </button>
+                            <button onClick={handlePreviewIIF} className="btn btn-secondary" disabled={loadingIIFPreview} style={{ gap: "0.5rem" }}>
+                                {loadingIIFPreview ? "Loading..." : <><FileDown size={18} /> Preview & Export IIF</>}
+                            </button>
                             <button onClick={handleExport} className="btn btn-secondary" disabled={exporting} style={{ gap: "0.5rem" }}>
                                 {exporting ? "Generating..." : <><FileDown size={18} /> Export DOCX</>}
                             </button>
@@ -240,6 +293,77 @@ export default function ReportsPage() {
                                 >
                                     &raquo;
                                 </button>
+                            </div>
+                        )}
+
+                        {iifPreview && (
+                            <div style={{
+                                position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+                                display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
+                            }}>
+                                <div className="card" style={{ width: "min(900px, 92vw)", maxHeight: "85vh", overflow: "auto", padding: "1.5rem" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                                        <h2 style={{ fontSize: "1.1rem", fontWeight: 700 }}>IIF Preview — {iifPreview.month}</h2>
+                                        <button onClick={() => setIifPreview(null)} className="btn btn-secondary" style={{ padding: "0.25rem 0.75rem" }}>✕</button>
+                                    </div>
+
+                                    <p style={{ fontSize: "0.85rem", color: "hsl(var(--text-secondary))", marginBottom: "1rem" }}>
+                                        Posts to <strong>{iifPreview.arAccount}</strong> / <strong>{iifPreview.incomeAccount}</strong> as item <strong>{iifPreview.item}</strong>.
+                                        {" "}{iifPreview.included.length} invoice{iifPreview.included.length === 1 ? "" : "s"} will be created, totaling{" "}
+                                        <strong style={{ color: "hsl(var(--success))" }}>${iifPreview.totalAmount.toFixed(2)}</strong>.
+                                    </p>
+
+                                    {iifPreview.skipped.length > 0 && (
+                                        <div style={{ background: "hsl(var(--warning, 30 90% 96%))", border: "1px solid hsl(var(--warning, 30 90% 60%))", borderRadius: 8, padding: "0.75rem", marginBottom: "1rem" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, marginBottom: "0.5rem" }}>
+                                                <AlertCircle size={16} /> {iifPreview.skipped.length} row(s) will be SKIPPED
+                                            </div>
+                                            {iifPreview.skipped.map((s, i) => (
+                                                <div key={i} style={{ fontSize: "0.8rem" }}>
+                                                    {s.client} ({s.docnum || "no FERI"}) — {s.skippedReason}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="data-table-container">
+                                        <table className="data-table" style={{ whiteSpace: "nowrap" }}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Client</th>
+                                                    <th>Invoice # (FERI)</th>
+                                                    <th>Proforma</th>
+                                                    <th>Date</th>
+                                                    <th style={{ textAlign: "right" }}>Amount USD</th>
+                                                    <th>Memo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {iifPreview.included.map((t, i) => (
+                                                    <tr key={i}>
+                                                        <td style={{ fontWeight: 500 }}>{t.client}</td>
+                                                        <td>{t.docnum}</td>
+                                                        <td>{t.proforma}</td>
+                                                        <td>{t.displayDate}</td>
+                                                        <td style={{ textAlign: "right", fontWeight: 600 }}>{t.amount.toFixed(2)}</td>
+                                                        <td style={{ whiteSpace: "normal", fontSize: "0.8rem", color: "hsl(var(--text-secondary))" }}>{t.memo}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
+                                        <button onClick={() => setIifPreview(null)} className="btn btn-secondary">Cancel</button>
+                                        <button
+                                            onClick={handleExportIIF}
+                                            className="btn btn-primary"
+                                            disabled={exportingIIF || iifPreview.included.length === 0}
+                                        >
+                                            {exportingIIF ? "Downloading..." : `Download IIF (${iifPreview.included.length})`}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>

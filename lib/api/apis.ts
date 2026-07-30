@@ -42,6 +42,16 @@ export const apis = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ month }),
         }).then(handleResponse),
+        previewIIF: (month: string) => fetch("/api/reports/preview-iif", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ month }),
+        }).then(handleResponse),
+        exportIIF: (month: string) => fetch("/api/reports/export-iif", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ month }),
+        }).then(handleResponse),
     },
     shipments: {
         getShipment: (id: string) => fetch(`/api/shipments/${id}`).then(handleResponse),

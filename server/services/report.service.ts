@@ -38,6 +38,7 @@ export interface ReportRow {
     date: string;
     feri: string;
     proforma: string;
+    invoiceNumber: string;   // ← NEW — the F18007/F18008-style number from your invoice-numbering system
     ferriEUR: number;
     curExc: number;
     ferriUSD: number;
@@ -91,6 +92,7 @@ export async function getMonthlySummary(month: string): Promise<MonthlyReport> {
         client: s.clientName,
         date: format(s.createdAt, "dd/MM/yyyy"),
         feri: s.feriNumber || "",
+        invoiceNumber: s.invoiceNumber || "",
         proforma: s.proformaNumber || "",
         ferriEUR: toNum(s.proformaAmountEUR),
         curExc: toNum(s.exchangeRate),
@@ -107,6 +109,7 @@ export async function getMonthlySummary(month: string): Promise<MonthlyReport> {
     const totals = {
         ferriEUR: round2(rows.reduce((sum, r) => sum + r.ferriEUR, 0)),
         curExc: 0,
+        invoiceNumber: "",
         ferriUSD: round2(rows.reduce((sum, r) => sum + r.ferriUSD, 0)),
         commEUR: round2(rows.reduce((sum, r) => sum + r.commEUR, 0)),
         commUSD: round2(rows.reduce((sum, r) => sum + r.commUSD, 0)),
@@ -119,6 +122,138 @@ export async function getMonthlySummary(month: string): Promise<MonthlyReport> {
 
     console.log("Monthly summary generated", { month, rowCount: rows.length });
     return { month, rows, totals };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IIF EXPORT (QuickBooks Desktop Invoice Import) — all customers billed in USD
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * IMPORTANT: These MUST match your QuickBooks list entries EXACTLY (case-sensitive).
+ * A mismatch doesn't error on import — QuickBooks silently creates a new
+ * duplicate list entry instead of posting to the right one.
+ */
+const IIF_CONFIG = {
+    AR_ACCOUNT: "Accounts Receivable - USD",
+    INCOME_ACCOUNT: "Freight Forwarding Income", // CONFIRM this matches the account behind your "TRANSIT" item
+    ITEM_NAME: "TRANSIT",
+    HS_CODE: "0010.22.00",
+};
+
+export interface IIFTransaction {
+    client: string;
+    docnum: string;      // FERI number, used as invoice #
+    proforma: string;
+    date: string;         // MM/DD/YYYY, ready for IIF
+    displayDate: string;  // dd/MM/yyyy, for showing the user
+    amount: number;
+    memo: string;
+    skippedReason?: string; // set if this row will be excluded from the IIF file
+}
+
+function iifSafe(text: string | number | null | undefined): string {
+    return String(text ?? "")
+        .replace(/\t/g, " ")
+        .replace(/[\r\n]+/g, " ")
+        .trim();
+}
+
+function iifDate(dateStr: string): string {
+    // r.date comes in as "dd/MM/yyyy" from getMonthlySummary — IIF wants MM/DD/YYYY
+    const [dd, mm, yyyy] = dateStr.split("/");
+    return `${mm}/${dd}/${yyyy}`;
+}
+
+/**
+ * Builds the list of invoice transactions from the monthly report.
+ * Shared by both the preview (JSON, for the UI) and the actual IIF export,
+ * so what the user previews is guaranteed to be exactly what gets downloaded.
+ */
+function buildIIFTransactions(report: MonthlyReport): IIFTransaction[] {
+    return report.rows.map((r) => {
+        const memo = iifSafe(
+            `FERI & CERTIFICATE OF DESTINATION ( ${r.feri} )` +
+            (r.proforma ? ` | Proforma: ${r.proforma}` : "") +
+            ` | ROE: ${r.curExc.toFixed(4)}`
+        );
+
+        const txn: IIFTransaction = {
+            client: r.client,
+            docnum: r.invoiceNumber,   // ← was r.feri
+            proforma: r.proforma,
+            date: r.date ? iifDate(r.date) : "",
+            displayDate: r.date,
+            amount: r.totalUSD,
+            memo,
+        };
+
+        if (!r.invoiceNumber) txn.skippedReason = "No invoice number assigned yet — finalize the invoice first";
+        else if (!r.date) txn.skippedReason = "Missing date";
+        else if (r.totalUSD === 0) txn.skippedReason = "Total USD is zero";
+
+        return txn;
+    });
+}
+
+/**
+ * Preview only — returns the transactions that WOULD be exported plus the ones
+ * that will be skipped and why, so the user can catch problems before importing
+ * into the live QuickBooks file.
+ */
+export async function getMonthlyIIFPreview(month: string): Promise<{
+    month: string;
+    included: IIFTransaction[];
+    skipped: IIFTransaction[];
+    totalAmount: number;
+    arAccount: string;
+    incomeAccount: string;
+    item: string;
+}> {
+    const report = await getMonthlySummary(month);
+    const all = buildIIFTransactions(report);
+    const included = all.filter((t) => !t.skippedReason);
+    const skipped = all.filter((t) => t.skippedReason);
+
+    return {
+        month,
+        included,
+        skipped,
+        totalAmount: round2(included.reduce((sum, t) => sum + t.amount, 0)),
+        arAccount: IIF_CONFIG.AR_ACCOUNT,
+        incomeAccount: IIF_CONFIG.INCOME_ACCOUNT,
+        item: IIF_CONFIG.ITEM_NAME,
+    };
+}
+
+export async function exportMonthlyIIF(month: string): Promise<Buffer> {
+    const report = await getMonthlySummary(month);
+    const transactions = buildIIFTransactions(report).filter((t) => !t.skippedReason);
+
+    const lines: string[] = [];
+    lines.push(["!TRNS", "TRNSTYPE", "DATE", "ACCNT", "NAME", "CLASS", "AMOUNT", "DOCNUM", "MEMO", "CLEAR", "TOPRINT"].join("\t"));
+    lines.push(["!SPL", "TRNSTYPE", "DATE", "ACCNT", "NAME", "CLASS", "AMOUNT", "MEMO", "QNTY", "PRICE", "INVITEM", "TAXABLE"].join("\t"));
+    lines.push(["!ENDTRNS"].join("\t"));
+
+    for (const t of transactions) {
+        const name = iifSafe(t.client);
+        const amount = t.amount.toFixed(2);
+
+        lines.push([
+            "TRNS", "INVOICE", t.date, IIF_CONFIG.AR_ACCOUNT, name, "",
+            amount, iifSafe(t.docnum), t.memo, "N", "Y",
+        ].join("\t"));
+
+        lines.push([
+            "SPL", "INVOICE", t.date, IIF_CONFIG.INCOME_ACCOUNT, name, "",
+            (-t.amount).toFixed(2), t.memo, "1", amount, IIF_CONFIG.ITEM_NAME, "N",
+        ].join("\t"));
+
+        lines.push("ENDTRNS");
+    }
+
+    const buffer = Buffer.from(lines.join("\r\n") + "\r\n", "utf-8");
+    console.log("IIF report exported", { month, count: transactions.length });
+    return buffer;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
