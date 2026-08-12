@@ -97,6 +97,10 @@ export default function AnalyticsPage() {
         <div className="animate-fade-in" style={{ paddingBottom: "3rem" }}>
             <style jsx global>{`
                 @media print {
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
                     header, aside, .no-print {
                         display: none !important;
                     }
