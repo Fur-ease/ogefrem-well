@@ -13,7 +13,8 @@ import {
     LineChart,
     Line,
     AreaChart,
-    Area
+    Area,
+    LabelList
 } from "recharts";
 import { toast } from "sonner";
 import { Printer, Calendar, TrendingUp, Package, DollarSign, Download } from "lucide-react";
@@ -82,6 +83,14 @@ export default function AnalyticsPage() {
         return clientRow;
     }) || [];
 
+    const pivotedContainerData = data?.allClients?.map((client: string) => {
+        const clientRow: any = { clientName: client };
+        data?.chartData?.forEach((monthData: any) => {
+            clientRow[monthData.month] = monthData.clients[client]?.containerCount || 0;
+        });
+        return clientRow;
+    }) || [];
+
     const allMonths = data?.chartData?.map((d: any) => d.month) || [];
 
     return (
@@ -110,8 +119,16 @@ export default function AnalyticsPage() {
                         margin-bottom: 2rem;
                         text-align: center;
                     }
+                    .print-only-label {
+                        display: block !important;
+                        font-family: inherit;
+                        font-weight: bold;
+                    }
                 }
                 .print-header {
+                    display: none;
+                }
+                .print-only-label {
                     display: none;
                 }
             `}</style>
@@ -162,15 +179,16 @@ export default function AnalyticsPage() {
                     </h2>
                     <div style={{ height: "450px", width: "100%" }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={pivotedFinanceData} margin={{ top: 20, right: 120, left: 40, bottom: 60 }}>
+                            <BarChart data={pivotedFinanceData} margin={{ top: 30, right: 120, left: 40, bottom: 120 }}>
                                 <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border) / 0.5)" vertical={false} />
                                 <XAxis
                                     dataKey="clientName"
                                     stroke="hsl(var(--text-primary))"
-                                    fontSize={11}
                                     tickLine={true}
                                     axisLine={true}
-                                    label={{ value: "Client", position: "bottom", offset: 40, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
+                                    interval={0}
+                                    tick={{ angle: -35, textAnchor: 'end', fontSize: 10, dy: 10 }}
+                                    label={{ value: "Client", position: "bottom", offset: 90, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
                                 />
                                 <YAxis
                                     stroke="hsl(var(--text-primary))"
@@ -199,7 +217,16 @@ export default function AnalyticsPage() {
                                         stroke="#333"
                                         strokeWidth={0.5}
                                         radius={0}
-                                    />
+                                    >
+                                        <LabelList
+                                            dataKey={month}
+                                            position="top"
+                                            className="print-only-label"
+                                            fill={qualitativeColors[idx % qualitativeColors.length]}
+                                            fontSize={11}
+                                            formatter={(val: any) => (val && Number(val) > 0 ? Number(val).toLocaleString() : "")}
+                                        />
+                                    </Bar>
                                 ))}
                             </BarChart>
                         </ResponsiveContainer>
@@ -213,15 +240,16 @@ export default function AnalyticsPage() {
                     </h2>
                     <div style={{ height: "450px", width: "100%" }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={pivotedWellData} margin={{ top: 20, right: 120, left: 40, bottom: 60 }}>
+                            <BarChart data={pivotedWellData} margin={{ top: 30, right: 120, left: 40, bottom: 120 }}>
                                 <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border) / 0.5)" vertical={false} />
                                 <XAxis
                                     dataKey="clientName"
                                     stroke="hsl(var(--text-primary))"
-                                    fontSize={11}
                                     tickLine={true}
                                     axisLine={true}
-                                    label={{ value: "Client", position: "bottom", offset: 40, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
+                                    interval={0}
+                                    tick={{ angle: -35, textAnchor: 'end', fontSize: 10, dy: 10 }}
+                                    label={{ value: "Client", position: "bottom", offset: 90, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
                                 />
                                 <YAxis
                                     stroke="hsl(var(--text-primary))"
@@ -250,7 +278,77 @@ export default function AnalyticsPage() {
                                         stroke="#333"
                                         strokeWidth={0.5}
                                         radius={0}
-                                    />
+                                    >
+                                        <LabelList
+                                            dataKey={month}
+                                            position="top"
+                                            className="print-only-label"
+                                            fill={qualitativeColors[idx % qualitativeColors.length]}
+                                            fontSize={11}
+                                            formatter={(val: any) => (val && Number(val) > 0 ? Number(val).toLocaleString() : "")}
+                                        />
+                                    </Bar>
+                                ))}
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* 3. Total Containers per Client */}
+                <div className="card">
+                    <h2 style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: 700, marginBottom: "2rem" }}>
+                        Total Containers per Client
+                    </h2>
+                    <div style={{ height: "450px", width: "100%" }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={pivotedContainerData} margin={{ top: 30, right: 120, left: 40, bottom: 120 }}>
+                                <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border) / 0.5)" vertical={false} />
+                                <XAxis
+                                    dataKey="clientName"
+                                    stroke="hsl(var(--text-primary))"
+                                    tickLine={true}
+                                    axisLine={true}
+                                    interval={0}
+                                    tick={{ angle: -35, textAnchor: 'end', fontSize: 10, dy: 10 }}
+                                    label={{ value: "Client", position: "bottom", offset: 90, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
+                                />
+                                <YAxis
+                                    stroke="hsl(var(--text-primary))"
+                                    fontSize={12}
+                                    tickLine={true}
+                                    axisLine={true}
+                                    tickFormatter={(v) => v.toLocaleString()}
+                                    label={{ value: "Containers", angle: -90, position: "insideLeft", offset: -20, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
+                                />
+                                <Tooltip
+                                    cursor={{ fill: "hsl(var(--primary) / 0.05)" }}
+                                    contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
+                                />
+                                <Legend
+                                    layout="vertical"
+                                    verticalAlign="middle"
+                                    align="right"
+                                    wrapperStyle={{ paddingLeft: "20px" }}
+                                />
+                                {allMonths.map((month: string, idx: number) => (
+                                    <Bar
+                                        key={month}
+                                        dataKey={month}
+                                        name={month}
+                                        fill={qualitativeColors[idx % qualitativeColors.length]}
+                                        stroke="#333"
+                                        strokeWidth={0.5}
+                                        radius={0}
+                                    >
+                                        <LabelList
+                                            dataKey={month}
+                                            position="top"
+                                            className="print-only-label"
+                                            fill={qualitativeColors[idx % qualitativeColors.length]}
+                                            fontSize={11}
+                                            formatter={(val: any) => (val && Number(val) > 0 ? Number(val).toLocaleString() : "")}
+                                        />
+                                    </Bar>
                                 ))}
                             </BarChart>
                         </ResponsiveContainer>
