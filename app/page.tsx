@@ -22,6 +22,25 @@ function toNum(v: Decimal | null): string {
   return `$${parseFloat(v.toString()).toFixed(2)}`;
 }
 
+// Builds a truncated pagination range, e.g. 1 2 3 4 5 ... 12 13 or 1 ... 6 7 8 ... 12 13
+function getPaginationRange(current: number, total: number): (number | "...")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const pages: (number | "...")[] = [1];
+
+  if (current <= 4) {
+    pages.push(2, 3, 4, 5, "...", total);
+  } else if (current >= total - 3) {
+    pages.push("...", total - 4, total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push("...", current - 1, current, current + 1, "...", total);
+  }
+
+  return pages;
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -231,15 +250,32 @@ export default async function DashboardPage({
             >
               &laquo;
             </Link>
-            {[...Array(totalPages)].map((_, i) => (
-              <Link
-                key={i}
-                href={createPageUrl(i + 1)}
-                className={`pagination-btn ${pageNum === i + 1 ? "active" : ""}`}
-              >
-                {i + 1}
-              </Link>
-            ))}
+            {getPaginationRange(pageNum, totalPages).map((p, i) =>
+              p === "..." ? (
+                <span
+                  key={`ellipsis-${i}`}
+                  className="pagination-ellipsis"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: "2rem",
+                    color: "hsl(var(--text-muted))",
+                    userSelect: "none",
+                  }}
+                >
+                  &hellip;
+                </span>
+              ) : (
+                <Link
+                  key={p}
+                  href={createPageUrl(p)}
+                  className={`pagination-btn ${pageNum === p ? "active" : ""}`}
+                >
+                  {p}
+                </Link>
+              )
+            )}
             <Link
               href={createPageUrl(pageNum + 1)}
               className={`pagination-btn ${pageNum >= totalPages ? "disabled" : ""}`}
@@ -254,4 +290,3 @@ export default async function DashboardPage({
     </div>
   );
 }
-
