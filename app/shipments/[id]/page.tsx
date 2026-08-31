@@ -46,7 +46,10 @@ import {
     Eye,
     Globe,
     Printer,
-    FileCheck
+    FileCheck,
+    Edit3,
+    X,
+    Settings
 } from "lucide-react";
 import { InvoicePrint } from "@/components/InvoicePrint";
 import { useSession } from "next-auth/react";
@@ -69,6 +72,49 @@ export default function ShipmentDetailPage() {
     const [paidForm, setPaidForm] = useState({ exchangeRate: "1.23" });
     const [adForm, setAdForm] = useState({ adAmountUSD: "", tioNumber: "" });
     const { data: session } = useSession();
+    const isSuperAdmin = session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "ADMIN" || session?.user?.department === "ADMIN";
+
+    const [showAdminEditModal, setShowAdminEditModal] = useState(false);
+    const [adminEditForm, setAdminEditForm] = useState({
+        feriNumber: "",
+        proformaNumber: "",
+        containerCount: 1,
+        clientName: "",
+        blNumber: "",
+        proformaAmountEUR: "",
+        commissionEUR: ""
+    });
+
+    const openAdminEdit = () => {
+        if (!shipment) return;
+        setAdminEditForm({
+            feriNumber: shipment.feriNumber || "",
+            proformaNumber: shipment.proformaNumber || "",
+            containerCount: Number((shipment as any).containerCount || 1),
+            clientName: shipment.clientName || "",
+            blNumber: shipment.blNumber || "",
+            proformaAmountEUR: shipment.proformaAmountEUR || "",
+            commissionEUR: shipment.commissionEUR || ""
+        });
+        setShowAdminEditModal(true);
+    };
+
+    const handleSaveAdminEdit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const tId = toast.loading("Updating shipment details...");
+        setActionLoading(true);
+        try {
+            await apis.shipments.updateShipment(params.id as string, "EDIT_ADMIN", adminEditForm);
+            toast.success("Shipment details updated successfully", { id: tId });
+            setShowAdminEditModal(false);
+            await fetchShipment();
+        } catch (err: any) {
+            toast.error(err.message || "Failed to update shipment details", { id: tId });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const [invoiceForm, setInvoiceForm] = useState({
         vesselName: "",
         entryNumber: "",
@@ -280,7 +326,18 @@ export default function ShipmentDetailPage() {
                                 </div>
                             </div>
                         </div>
-                        <div><StatusBadge status={shipment.status} /></div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                            <StatusBadge status={shipment.status} />
+                            {isSuperAdmin && (
+                                <button
+                                    onClick={openAdminEdit}
+                                    className="btn btn-secondary btn-sm"
+                                    style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "hsl(var(--surface-2))", border: "1px solid hsl(var(--border))" }}
+                                >
+                                    <Edit3 size={14} /> Edit (Super Admin)
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="card" style={{ marginBottom: "1rem", overflowX: "auto" }}>
@@ -571,6 +628,53 @@ export default function ShipmentDetailPage() {
                                 <button type="submit" disabled={actionLoading} className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }}>
                                     {shipment.invoiceNumber ? "Update & Finalize" : "Save & Generate"}
                                 </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* SUPER ADMIN EDIT MODAL */}
+            {showAdminEditModal && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(248, 247, 247, 0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "1rem" }}>
+                    <div className="card" style={{ maxWidth: "550px", width: "100%", padding: "1.5rem", background: "#ffff", border: "1px solid #e8e8e9ff", color: "#000000" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                            <div>
+                                <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "#3b82f6" }}>
+                                    <Settings size={18} /> Admin Edit Shipment Details
+                                </h3>
+                                <p style={{ fontSize: "0.78rem", color: "#94a3b8", margin: "0.2rem 0 0" }}>
+                                    Modify FERI number, Proforma number, container count, and BL details.
+                                </p>
+                            </div>
+                            <button onClick={() => setShowAdminEditModal(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={handleSaveAdminEdit}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
+                                <div className="form-group">
+                                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#94a3b8" }}>FERI Number</label>
+                                    <input value={adminEditForm.feriNumber} onChange={e => setAdminEditForm({ ...adminEditForm, feriNumber: e.target.value })} placeholder="e.g. FERI-883920" style={{ background: "#eae8e8ff", border: "none", color: "#0b0b0bff" }} />
+                                </div>
+                                <div className="form-group">
+                                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#94a3b8" }}>Proforma Number</label>
+                                    <input value={adminEditForm.proformaNumber} onChange={e => setAdminEditForm({ ...adminEditForm, proformaNumber: e.target.value })} placeholder="e.g. PROF-2026-09" style={{ background: "#eae8e8ff", border: "none", color: "#0b0b0bff" }} />
+                                </div>
+                                <div className="form-group">
+                                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#94a3b8" }}>Number of Containers</label>
+                                    <input type="number" min={1} required value={adminEditForm.containerCount} onChange={e => setAdminEditForm({ ...adminEditForm, containerCount: Number(e.target.value) })} style={{ background: "#eae8e8ff", border: "none", color: "#0b0b0bff" }} />
+                                </div>
+                                <div className="form-group">
+                                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#94a3b8" }}>Client Name</label>
+                                    <input value={adminEditForm.clientName} onChange={e => setAdminEditForm({ ...adminEditForm, clientName: e.target.value })} style={{ background: "#eae8e8ff", border: "none", color: "#0b0b0bff" }} />
+                                </div>
+                                <div className="form-group" style={{ gridColumn: "span 2" }}>
+                                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#94a3b8" }}>B/L Number</label>
+                                    <input value={adminEditForm.blNumber} onChange={e => setAdminEditForm({ ...adminEditForm, blNumber: e.target.value })} style={{ background: "#eae8e8ff", border: "none", color: "#0b0b0bff" }} />
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                                <button type="button" onClick={() => setShowAdminEditModal(false)} className="btn btn-secondary btn-sm" style={{ background: "#eae8e8ff", border: "none", color: "#0b0b0bff" }}>Cancel</button>
+                                <button type="submit" disabled={actionLoading} className="btn btn-primary btn-sm" style={{ background: "#3b82f6", color: "#fff" }}>Save Changes</button>
                             </div>
                         </form>
                     </div>
