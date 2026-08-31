@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PlusCircle } from "lucide-react";
 import { apis } from "@/lib/api/apis";
+import { ClientSelect } from "@/components/well/ClientSelect";
 
 export default function NewShipmentPage() {
     const router = useRouter();
@@ -39,15 +40,14 @@ export default function NewShipmentPage() {
             </p>
 
             <form onSubmit={handleSubmit} className="card">
-                <div className="form-group" style={{ marginBottom: "1.25rem" }}>
-                    <label htmlFor="clientName">Client Name</label>
-                    <input
+                <div style={{ marginBottom: "1.25rem" }}>
+                    <ClientSelect
                         id="clientName"
-                        type="text"
+                        label="Client Name"
                         required
                         value={form.clientName}
-                        onChange={(e) => setForm({ ...form, clientName: e.target.value })}
-                        placeholder="e.g. ACME Corp"
+                        onChange={(val) => setForm({ ...form, clientName: val })}
+                        placeholder="Select or enter client name..."
                     />
                 </div>
 
