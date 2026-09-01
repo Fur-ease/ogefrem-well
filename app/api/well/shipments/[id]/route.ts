@@ -44,7 +44,9 @@ export async function PATCH(
         }
 
         const data = sanitizeObject(validation.data);
-        const shipment = await updateWellShipment(id, data);
+        const updatedBy = (session.user as any).username || session.user.email || "Operations";
+        const isSuperAdmin = (session.user as any).role === "SUPER_ADMIN" || (session.user as any).role === "ADMIN" || session.user.department === "ADMIN";
+        const shipment = await updateWellShipment(id, { ...data, isSuperAdmin }, updatedBy);
 
         await logActivity(
             session.user.id,

@@ -142,16 +142,16 @@ export async function exportWellShipmentContainersExcel(shipmentId: string): Pro
     const worksheet = workbook.addWorksheet("CONTAINER TRACKING");
 
     // Title row
-    worksheet.mergeCells("A1", "I1");
+    worksheet.mergeCells("A1", "K1");
     const titleCell = worksheet.getCell("A1");
-    titleCell.value = `WESTON LOGISTICS LTD\nCONTAINER TRACKING REPORT - ${shipment.refNumber}\nCLIENT: ${shipment.clientName}`;
+    titleCell.value = `WESTON LOGISTICS LTD\nCARGO UNIT & CONTAINER TRACKING REPORT - ${shipment.refNumber}\nCLIENT: ${shipment.clientName}`;
     titleCell.font = { bold: true, size: 14 };
     titleCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     worksheet.getRow(1).height = 60;
 
     // Header row
     const CONTAINER_COLUMNS = [
-        "CONTAINER NO.", "SIZE", "WEIGHT (KG)", "DISCHARGE DATE", "GATE OUT DATE", "TRUCK DETAILS", "DRIVER", "STATUS", "REMARKS"
+        "UNIT TYPE", "IDENTIFIER / CONT NO.", "SIZE / MODEL", "GROSS WEIGHT (KG)", "NET WEIGHT (KG)", "VOLUME (CBM)", "DISCHARGE DATE", "GATE OUT DATE", "TRUCK DETAILS", "DRIVER", "STATUS"
     ];
     const headerRow = worksheet.getRow(2);
     CONTAINER_COLUMNS.forEach((col, idx) => {
@@ -171,22 +171,35 @@ export async function exportWellShipmentContainersExcel(shipmentId: string): Pro
 
     // Set widths
     worksheet.columns = [
-        { width: 18 }, { width: 10 }, { width: 12 }, { width: 15 }, { width: 15 }, { width: 18 }, { width: 15 }, { width: 15 }, { width: 25 }
+        { width: 14 }, { width: 22 }, { width: 14 }, { width: 16 }, { width: 16 }, { width: 14 }, { width: 15 }, { width: 15 }, { width: 18 }, { width: 15 }, { width: 15 }
     ];
 
     const formatDate = (date: Date | null) => (date ? format(date, "d/M/yyyy") : "");
 
-    shipment.containers.forEach((c) => {
+    shipment.containers.forEach((container) => {
+        const c = container as any;
+        const uType = (c.unitType || "container").toLowerCase();
+        let identifier = c.containerNumber || "";
+        if (uType === "roro") identifier = c.chassisNumber || "";
+        else if (uType === "grouping_lcl") identifier = c.lclReferenceNumber || "";
+
+        let sizeSpec = c.size || "";
+        if (uType === "container") {
+            sizeSpec = `${c.size || "20"}' (${c.containerType || "DRY"})${c.sealNumber ? ` Seal: ${c.sealNumber}` : ""}`;
+        }
+
         const row = worksheet.addRow([
-            c.containerNumber,
-            c.size,
-            c.weight || "",
+            (c.unitType || "CONTAINER").toUpperCase(),
+            identifier,
+            sizeSpec,
+            c.grossWeightKg ?? c.weight ?? "",
+            c.netWeightKg ?? "",
+            c.volumeCbm ?? "",
             formatDate(c.dischargeDate),
             formatDate(c.gateOutDate),
             c.truckDetails || "",
             c.driverName || "",
             c.status || "",
-            c.remarks || "",
         ]);
 
         row.eachCell((cell) => {

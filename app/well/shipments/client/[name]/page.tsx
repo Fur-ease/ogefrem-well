@@ -87,6 +87,7 @@ export default function WellClientShipmentsPage() {
                                 <th>B/L Number</th>
                                 <th>Vessel</th>
                                 <th>ETA</th>
+                                <th>Containers</th>
                                 <th>Status</th>
                                 <th>Created</th>
                                 <th></th>
@@ -95,7 +96,7 @@ export default function WellClientShipmentsPage() {
                         <tbody>
                             {filteredShipments.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} style={{ textAlign: "center", padding: "4rem", color: "hsl(var(--text-muted))" }}>
+                                    <td colSpan={8} style={{ textAlign: "center", padding: "4rem", color: "hsl(var(--text-muted))" }}>
                                         No shipments found for this client.
                                     </td>
                                 </tr>
@@ -103,7 +104,9 @@ export default function WellClientShipmentsPage() {
                                 filteredShipments.map((s) => (
                                     <tr key={s.id}>
                                         <td style={{ fontWeight: 600, fontFamily: "monospace", color: "hsl(var(--primary))" }}>
-                                            {s.refNumber}
+                                            <Link href={`/well/shipments/${s.id}`} style={{ color: "inherit", textDecoration: "none" }}>
+                                                {s.refNumber}
+                                            </Link>
                                         </td>
                                         <td style={{ fontWeight: 600 }}>{s.blNumber}</td>
                                         <td>
@@ -119,6 +122,34 @@ export default function WellClientShipmentsPage() {
                                                     {format(new Date(s.eta), "dd MMM yyyy")}
                                                 </div>
                                             ) : "—"}
+                                        </td>
+                                        <td>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
+                                                {s.containers && s.containers.length > 0 ? (
+                                                    s.containers.map((c: any) => (
+                                                        <Link
+                                                            key={c.id}
+                                                            href={`/well/containers/${c.id}`}
+                                                            style={{
+                                                                fontSize: "0.75rem",
+                                                                fontWeight: 700,
+                                                                fontFamily: "monospace",
+                                                                padding: "0.15rem 0.45rem",
+                                                                borderRadius: "4px",
+                                                                background: "hsl(var(--primary) / 0.15)",
+                                                                color: "hsl(var(--primary))",
+                                                                textDecoration: "none",
+                                                                border: "1px solid hsl(var(--primary) / 0.3)"
+                                                            }}
+                                                            title={`View Container: ${c.containerNumber || c.chassisNumber}. Truck: ${c.truckDetails || 'Unassigned'}, Driver: ${c.driverName || 'Unassigned'}`}
+                                                        >
+                                                            {c.containerNumber || c.chassisNumber || "View Container"}
+                                                        </Link>
+                                                    ))
+                                                ) : (
+                                                    <span style={{ fontSize: "0.75rem", color: "hsl(var(--text-muted))" }}>{s.containerSize || "0 Units"}</span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td>
                                             <span className={`status-badge status-well status-${s.status.toLowerCase()}`}>

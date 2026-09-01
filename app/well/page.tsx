@@ -1,17 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Plus, ArrowRight, Anchor, FileCheck, CheckCircle, PackageSearch, BarChart3 } from "lucide-react";
+import { Plus, ArrowRight, Anchor, FileCheck, CheckCircle, PackageSearch, BarChart3, Package } from "lucide-react";
+import { getContainerCountSummary } from "@/server/well/well-container.service";
 
 export const dynamic = "force-dynamic";
 
 export default async function WellDashboardPage() {
-    const stats = await prisma.$transaction([
-        prisma.wellShipment.count(),
-        prisma.wellShipment.count({ where: { status: "AVA" } }),
-        prisma.wellShipment.count({ where: { status: "FUP" } }),
-        prisma.wellShipment.count({ where: { status: "FURO" } }),
-        prisma.wellShipment.count({ where: { status: "PCHARGES" } }),
+    const [stats, containerSummary] = await Promise.all([
+        prisma.$transaction([
+            prisma.wellShipment.count(),
+            prisma.wellShipment.count({ where: { status: "AVA" } }),
+            prisma.wellShipment.count({ where: { status: "FUP" } }),
+            prisma.wellShipment.count({ where: { status: "FURO" } }),
+            prisma.wellShipment.count({ where: { status: "PCHARGES" } }),
+        ]),
+        getContainerCountSummary()
     ]);
 
     const [total, ava, fup, furo, pcharges] = stats;
@@ -38,12 +42,21 @@ export default async function WellDashboardPage() {
             </div>
 
             {/* Stats Row */}
-            <div className="stat-card-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "1rem", marginBottom: "2rem" }}>
+            <div className="stat-card-grid" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "1rem", marginBottom: "2rem" }}>
                 <div className="stat-card">
                     <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "hsl(var(--text-muted))", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
                         Total Shipments
                     </div>
                     <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "hsl(var(--primary))" }}>{total}</div>
+                </div>
+                <div className="stat-card" style={{ borderTop: "3px solid hsl(var(--info))" }}>
+                    <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "hsl(var(--text-muted))", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.3rem" }}>
+                        Total Containers
+                    </div>
+                    <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "hsl(var(--text-primary))" }}>{containerSummary.total}</div>
+                    <div style={{ fontSize: "0.7rem", color: "hsl(var(--text-muted))", fontWeight: 600, marginTop: "0.2rem" }}>
+                        {containerSummary.in_transit} in transit, {containerSummary.delivered} delivered
+                    </div>
                 </div>
                 <div className="stat-card" style={{ borderTop: "3px solid hsl(var(--warning))" }}>
                     <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "hsl(var(--text-muted))", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.5rem" }}>

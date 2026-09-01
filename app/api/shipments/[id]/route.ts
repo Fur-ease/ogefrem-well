@@ -7,6 +7,7 @@ import {
     addAdToShipment,
     completeShipment,
     skipFeriAction,
+    updateShipmentAdmin,
 } from "@/server/services/shipment.service";
 import { handleApiError } from "@/lib/errors";
 
@@ -56,6 +57,9 @@ export async function PATCH(
                 break;
             case "COMPLETE":
                 updated = await completeShipment(id);
+                break;
+            case "EDIT_ADMIN":
+                updated = await updateShipmentAdmin(id, parsed.data);
                 break;
         }
 

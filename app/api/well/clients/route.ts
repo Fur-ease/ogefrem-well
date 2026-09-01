@@ -5,7 +5,7 @@ import { getClientSummaries } from "@/server/well/well-shipment.service";
 
 export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
-    if (!session || (session.user.department !== "WELL" && session.user.department !== "ADMIN")) {
+    if (!session) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

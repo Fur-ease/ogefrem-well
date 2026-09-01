@@ -20,7 +20,12 @@ import {
   Sun,
   X,
   Ship,
-  FileDigitIcon
+  FileDigitIcon,
+  Package,
+  Truck,
+  DollarSign,
+  AlertTriangle,
+  FileSpreadsheet
 } from "lucide-react";
 
 interface NavLinkProps {
@@ -189,25 +194,36 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 isActive={pathname === "/well"}
                 onClick={() => isMobile && setIsMobileMenuOpen(false)}
               />
-              <NavLink
-                href="/well/cargo"
-                icon={<BarChart3 size={20} />}
-                label="Daily Cargo"
-                isCollapsed={isCollapsed && !isMobile}
-                isActive={pathname === "/well/cargo"}
-                onClick={() => isMobile && setIsMobileMenuOpen(false)}
-              />
+              {!isCollapsed && !isMobile && (
+                <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "hsl(var(--primary))", padding: "0.75rem 0.75rem 0.25rem", letterSpacing: "0.06em", opacity: 0.8 }}>CARGO OS</div>
+              )}
               <NavLink
                 href="/well/shipments"
-                icon={<BarChart3 size={20} />}
-                label="Shipment"
+                icon={<Ship size={20} />}
+                label="Shipments Tracking"
                 isCollapsed={isCollapsed && !isMobile}
                 isActive={pathname.startsWith("/well/shipments")}
                 onClick={() => isMobile && setIsMobileMenuOpen(false)}
               />
               <NavLink
+                href="/well/containers"
+                icon={<Package size={20} />}
+                label="Containers"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname.startsWith("/well/containers")}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
+                href="/well/cargo"
+                icon={<FileSpreadsheet size={20} />}
+                label="Daily Cargo Register"
+                isCollapsed={isCollapsed && !isMobile}
+                isActive={pathname === "/well/cargo"}
+                onClick={() => isMobile && setIsMobileMenuOpen(false)}
+              />
+              <NavLink
                 href="/well/finance"
-                icon={<BarChart3 size={20} />}
+                icon={<DollarSign size={20} />}
                 label="Finance"
                 isCollapsed={isCollapsed && !isMobile}
                 isActive={pathname === "/well/finance"}
@@ -216,7 +232,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
               <NavLink
                 href="/well/analytics"
                 icon={<BarChart3 size={20} />}
-                label="WELL Analytics"
+                label="Analytics"
                 isCollapsed={isCollapsed && !isMobile}
                 isActive={pathname === "/well/analytics"}
                 onClick={() => isMobile && setIsMobileMenuOpen(false)}
@@ -321,8 +337,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid hsl(var(--sidebar-border))" }}>
           {(!isCollapsed || isMobile) ? (
             <div style={{ fontSize: "0.7rem", color: "hsl(var(--text-muted))", lineHeight: 1.5 }}>
-              WESTON — WELL<br />
-              Management v1.0
+              Cargo OS v2.0<br />
+              WELL Operations
             </div>
           ) : (
             <div style={{ height: "20px" }} />
@@ -409,7 +425,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Main Content */}
-        <main className="print-reset-padding" style={{ flex: 1, padding: isMobile ? "1.25rem" : "2rem", minWidth: 0 }}>
+        <main className="print-reset-padding" style={{ flex: 1, padding: isMobile ? "1.25rem" : "2rem", minWidth: 0, overflowX: "hidden" }}>
           <div className="print-reset-max-width" style={{ maxWidth: "1400px", margin: "0 auto", width: "100%" }}>
             {children}
           </div>

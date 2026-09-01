@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { addWellDocument } from "@/server/well/well-document.service";
 import { logActivity } from "@/server/well/activity.service";
+import { ClearingStageAutomationService } from "@/server/well/clearing-stage-automation.service";
 
 export async function POST(
     request: Request,
@@ -34,8 +35,8 @@ export async function POST(
             docType
         );
 
-        // Also update shipment status to FUP if this is the first doc (optional heuristic)
-        // We'll leave that logic for the frontend to trigger specifically.
+        // Addendum 9: Trigger stage transition automation on document upload
+        await ClearingStageAutomationService.onDocumentCreated(id);
 
         await logActivity(
             session.user.id,

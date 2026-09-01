@@ -1,0 +1,375 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ShipmentStatus {
+  NEW
+  FERI_ADDED
+  PAID
+  AD_GENERATED
+  COMPLETED
+}
+
+enum DocumentType {
+  BL
+  PACKING_LIST
+  COMMERCIAL_INVOICE
+  DRAFT_FERI
+  PROFORMA
+  POP
+  AD
+  FACTURE
+  FINAL_FERI
+  TIO
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHIPMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Shipment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Core identity
+  clientName String
+  blNumber   String @unique
+
+  // Step 1 — NEW
+  status         ShipmentStatus @default(NEW)
+  containerCount Int            @default(1)
+  isFeriSkipped  Boolean        @default(false)
+
+  // Step 2 — FERI_ADDED
+  feriNumber        String?
+  proformaNumber    String?
+  proformaAmountEUR Decimal? @db.Decimal(18, 4)
+  commissionEUR     Decimal? @db.Decimal(18, 4)
+
+  // Step 3 — PAID
+  exchangeRate Decimal? @db.Decimal(18, 6)
+
+  // Step 4 — AD_GENERATED
+  adAmountUSD Decimal? @db.Decimal(18, 4)
+  tioNumber   String?
+
+  // ── Computed & Stored Financial Results ──────────────────────────────────
+  // Stored on PAID step
+  ferriUSD Decimal? @db.Decimal(18, 2)
+  commUSD  Decimal? @db.Decimal(18, 2)
+
+  // Stored on AD_GENERATED step
+  totalUSD       Decimal? @db.Decimal(18, 2)
+  wellRevenue    Decimal? @db.Decimal(18, 2)
+  musungoRevenue Decimal? @db.Decimal(18, 2)
+  ogefremRevenue Decimal? @db.Decimal(18, 2)
+
+  // ── Invoice Details ───────────────────────────────────────────────────────
+  invoiceNumber String?   @unique
+  invoiceDate   DateTime?
+  vesselName    String?
+  entryNumber   String?
+  roeKsh        Decimal?  @db.Decimal(18, 4)
+  hsCode        String?   @default("0010.22.00")
+  preparedBy    String?
+
+  // ── TIMS Integration Details ──────────────────────────────────────────
+  cuInvoiceNumber String?
+  qrCodeUrl       String?
+  cuDateTime      DateTime?
+  cuSerialNumber  String?
+  customerPin     String?
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  documents Document[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOCUMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Document {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  type        DocumentType
+  filename    String
+  driveFileId String
+  driveUrl    String
+
+  // Versioning for AD documents — v1, v2, etc.
+  version Int @default(1)
+
+  // Soft-replace: when an AD is replaced, old row is flagged
+  isReplaced Boolean @default(false)
+
+  @@index([shipmentId])
+  @@index([shipmentId, type])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTHENTICATION & USERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String
+  password    String
+  role        String   @default("ADMIN") // "ADMIN" | "USER"
+  department  String   @default("ADMIN") // "ADMIN" | "WELL" | "OGEFREM"
+  isSuspended Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resetTokens  ResetToken[]
+  activityLogs ActivityLog[]
+}
+
+model ResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action   String // e.g. "CREATED_WELL_SHIPMENT", "UPDATED_STATUS"
+  entity   String // e.g. "WellShipment", "User"
+  entityId String?
+  detail   String? // JSON string with extra info
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum WellShipmentStatus {
+  AVA // Shipment created — awaiting documents
+  FUP // Documents received — follow-up in progress
+  FURO // Released — payment received
+  PCHARGES // Port charges — moved to Finance, off daily cargo
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — SHIPMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellShipment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Auto-assigned incremental reference: WELL/1751, WELL/1752, …
+  refNumber String @unique
+
+  // Core identity (entered at creation)
+  clientName    String
+  clientRef     String? // Client reference (e.g. 25S600032 189)
+  blNumber      String
+  containerSize String // e.g. 1X20, 3X20, 1X40
+  vesselName    String?
+  eta           DateTime?
+
+  // Status workflow: AVA → FUP → FURO → PCHARGES
+  status WellShipmentStatus @default(AVA)
+
+  // Cargo OS Health & Operational Journey
+  health           String  @default("ON_TRACK") // ON_TRACK | ATTENTION | DELAYED | BLOCKED
+  healthReason     String?
+  currentStage     String? @default("VESSEL_ARRIVED")
+  assignedOperator String? @default("Operations Team")
+  shippingLine     String?
+  origin           String? @default("Mombasa Port")
+  destination      String? @default("Nairobi ICD/CFS")
+  finalDelivery    String?
+  transporter      String?
+
+  // Customs & logistics tracking (daily cargo columns)
+  docRecv      String? // e.g. "11/2 COPIES"
+  lodgeCustoms DateTime?
+  entryNumber  String?
+  entryPassed  DateTime?
+  tblNtbl      String? // TBL / N.TBL
+  slineCharges DateTime?
+  slinePaid    DateTime?
+  ddRecv       DateTime?
+  lastSlingCfs String?
+  lodgedKpa    DateTime?
+  dateVerified DateTime?
+
+  // Finance
+  isPaid      Boolean   @default(false)
+  paidAt      DateTime?
+  amount      Decimal?  @db.Decimal(18, 2)
+  roeKsh      Decimal?  @default(130) @db.Decimal(10, 2)
+  invoiceDate DateTime?
+
+  notes String?
+
+  documents    WellDocument[]
+  containers   WellContainer[]
+  events       WellEvent[]
+  exceptions   WellException[]
+  notesHistory WellShipmentNote[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([clientName])
+  @@index([blNumber])
+  @@index([refNumber])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — EVENT & AUDIT TIMELINE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellEvent {
+  id         String       @id @default(cuid())
+  shipmentId String
+  shipment   WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  stage       String?
+  source      String   @default("MANUAL") // "MANUAL" | "AUTOMATIC"
+  updatedBy   String   @default("Operations")
+  reference   String?
+  createdAt   DateTime @default(now())
+
+  @@index([shipmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — EXCEPTION MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellException {
+  id         String       @id @default(cuid())
+  shipmentId String
+  shipment   WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  containerId        String?
+  issueType          String // e.g. "Customs delay", "Missing document", "D/O issue"
+  severity           String    @default("MEDIUM") // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  status             String    @default("OPEN") // "OPEN" | "RESOLVED"
+  description        String
+  expectedResolution String?
+  assignedTo         String?
+  dueDate            DateTime?
+  createdBy          String    @default("Operations")
+  createdAt          DateTime  @default(now())
+  resolvedAt         DateTime?
+  resolvedBy         String?
+
+  @@index([shipmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — CONTAINER
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellContainer {
+  id         String       @id @default(cuid())
+  shipmentId String
+  shipment   WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  containerNumber String // e.g. TGBU3222408
+  size            String? // e.g. 20, 40
+  weight          Float? // KG
+  dischargeDate   DateTime?
+  gateOutDate     DateTime?
+  truckDetails    String?
+  driverName      String?
+  status          String? // e.g. "CLEARED", "RETURNED"
+  remarks         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shipmentId])
+  @@index([containerNumber])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — DOCUMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellDocument {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shipmentId String
+  shipment   WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  filename    String
+  driveFileId String
+  driveUrl    String
+  docType     String // free-text label: "BL", "PACKING LIST", "INVOICE", etc.
+
+  @@index([shipmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — REF COUNTER (auto-increment reference number)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellRefCounter {
+  id      Int @id @default(1)
+  lastRef Int @default(1750) // next new shipment gets 1751
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — SHIPMENT NOTES HISTORY (ADDENDUM 8)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellShipmentNote {
+  id         String       @id @default(cuid())
+  shipmentId String
+  shipment   WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  note      String
+  createdBy String   @default("Operations")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shipmentId])
+  @@index([shipmentId, createdAt])
+}

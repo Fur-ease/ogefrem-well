@@ -209,6 +209,17 @@ model WellShipment {
   // Status workflow: AVA → FUP → FURO → PCHARGES
   status          WellShipmentStatus @default(AVA)
 
+  // Cargo OS Health & Operational Journey
+  health           String             @default("ON_TRACK") // ON_TRACK | ATTENTION | DELAYED | BLOCKED
+  healthReason     String?
+  currentStage     String?            @default("VESSEL_ARRIVED")
+  assignedOperator String?            @default("Operations Team")
+  shippingLine     String?
+  origin           String?            @default("Mombasa Port")
+  destination      String?            @default("Nairobi ICD/CFS")
+  finalDelivery    String?
+  transporter      String?
+
   // Customs & logistics tracking (daily cargo columns)
   docRecv         String?       // e.g. "11/2 COPIES"
   lodgeCustoms    DateTime?
@@ -225,6 +236,7 @@ model WellShipment {
   // Finance
   isPaid          Boolean       @default(false)
   paidAt          DateTime?
+  paymentVerifiedAt DateTime?
   amount          Decimal?      @db.Decimal(18, 2)
   roeKsh          Decimal?      @db.Decimal(10, 2) @default(130)
   invoiceDate     DateTime?
@@ -233,6 +245,9 @@ model WellShipment {
 
   documents       WellDocument[]
   containers      WellContainer[]
+  events          WellEvent[]
+  exceptions      WellException[]
+  notesHistory    WellShipmentNote[]
 
   @@index([status])
   @@index([createdAt])
@@ -242,26 +257,80 @@ model WellShipment {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WELL — EVENT & AUDIT TIMELINE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellEvent {
+  id          String       @id @default(cuid())
+  shipmentId  String
+  shipment    WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  stage       String?
+  source      String       @default("MANUAL") // "MANUAL" | "AUTOMATIC" | "system_rule"
+  updatedBy   String       @default("Operations")
+  reference   String?
+  createdAt   DateTime     @default(now())
+
+  @@index([shipmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — EXCEPTION MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellException {
+  id                 String       @id @default(cuid())
+  shipmentId         String
+  shipment           WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  containerId        String?
+  issueType          String       // e.g. "Customs delay", "Missing document", "D/O issue"
+  severity           String       @default("MEDIUM") // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  status             String       @default("OPEN")   // "OPEN" | "RESOLVED"
+  description        String
+  expectedResolution String?
+  assignedTo         String?
+  dueDate            DateTime?
+  createdBy          String       @default("Operations")
+  createdAt          DateTime     @default(now())
+  resolvedAt         DateTime?
+  resolvedBy         String?
+
+  @@index([shipmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // WELL — CONTAINER
 // ─────────────────────────────────────────────────────────────────────────────
 
 model WellContainer {
-  id              String       @id @default(cuid())
-  shipmentId      String
-  shipment        WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  id                 String       @id @default(cuid())
+  shipmentId         String
+  shipment           WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   
-  containerNumber String       // e.g. TGBU3222408
-  size            String?      // e.g. 20, 40
-  weight          Float?       // KG
-  dischargeDate   DateTime?
-  gateOutDate     DateTime?
-  truckDetails    String?
-  driverName      String?
-  status          String?      // e.g. "CLEARED", "RETURNED"
-  remarks         String?
+  unitType           String       @default("container") // "roro" | "container" | "genco" | "bulk_4ft" | "bulk_05ft" | "grouping_lcl" | "bulk_01kg"
+  containerNumber    String?      // e.g. TGBU3222408
+  chassisNumber      String?      // e.g. JTMHY7AJ8N4123456
+  sealNumber         String?      // e.g. SL482910
+  lclReferenceNumber String?      // e.g. LCL-2026-0417
+  size               String?      // '10' | '20' | '40' for container
+  containerType      String?      // DRY, HC, RF, OT, FR, PL, TK, VH, BU
+  weight             Float?       // legacy alias
+  grossWeightKg      Float?       // Gross Weight in KG
+  netWeightKg        Float?       // Net Weight in KG
+  volumeCbm          Float?       // Volume in CBM
+  dischargeDate      DateTime?
+  gateOutDate        DateTime?
+  truckDetails       String?
+  driverName         String?
+  driverIdNumber     String?      // ID/licence number of the assigned driver
+  status             String?      // e.g. "CLEARED", "RETURNED"
+  remarks            String?
   
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   @@index([shipmentId])
   @@index([containerNumber])
@@ -295,3 +364,22 @@ model WellRefCounter {
   id      Int @id @default(1)
   lastRef Int @default(1750) // next new shipment gets 1751
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WELL — SHIPMENT NOTES HISTORY (ADDENDUM 8)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WellShipmentNote {
+  id         String       @id @default(cuid())
+  shipmentId String
+  shipment   WellShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  note       String
+  createdBy  String       @default("Operations")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([shipmentId])
+  @@index([shipmentId, createdAt])
+}
+

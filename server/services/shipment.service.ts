@@ -51,7 +51,7 @@ export async function getShipmentById(id: string) {
     const shipments = await prisma.$queryRaw<any[]>`
         SELECT * FROM "Shipment" WHERE id = ${id} LIMIT 1
     `;
-    
+
     const shipment = shipments[0];
     if (!shipment) throw new NotFoundError("Shipment");
 
@@ -188,7 +188,7 @@ export async function markShipmentPaid(id: string, data: MarkPaidInput) {
 
 export async function addAdToShipment(id: string, data: AddAdInput) {
     const shipment = await getShipmentById(id);
-    
+
     // Normally we expect PAID status. If FERI was skipped, we are in AD_GENERATED but need to finalize data.
     const isSkippedAndUnfilled = (shipment as any).isFeriSkipped && shipment.adAmountUSD === null;
     if (shipment.status !== ShipmentStatus.PAID && !isSkippedAndUnfilled) {
@@ -247,6 +247,39 @@ export async function completeShipment(id: string) {
     });
 
     logger.info({ shipmentId: id }, "Shipment completed");
+    return updated;
+}
+
+export async function updateShipmentAdmin(id: string, data: {
+    feriNumber?: string;
+    proformaNumber?: string;
+    containerCount?: number;
+    clientName?: string;
+    blNumber?: string;
+    proformaAmountEUR?: number;
+    commissionEUR?: number;
+}) {
+    const shipment = await getShipmentById(id);
+    const updateData: any = {};
+    if (data.feriNumber !== undefined) updateData.feriNumber = data.feriNumber;
+    if (data.proformaNumber !== undefined) updateData.proformaNumber = data.proformaNumber;
+    if (data.containerCount !== undefined) updateData.containerCount = data.containerCount;
+    if (data.clientName !== undefined) updateData.clientName = data.clientName;
+    if (data.blNumber !== undefined) updateData.blNumber = data.blNumber;
+    if (data.proformaAmountEUR !== undefined) updateData.proformaAmountEUR = data.proformaAmountEUR;
+    if (data.commissionEUR !== undefined) updateData.commissionEUR = data.commissionEUR;
+
+    const newCount = data.containerCount ?? (shipment as any).containerCount;
+    if (shipment.adAmountUSD !== null && newCount) {
+        updateData.adAmountUSD = newCount * 20;
+    }
+
+    const updated = await prisma.shipment.update({
+        where: { id },
+        data: updateData,
+    });
+
+    logger.info({ shipmentId: id, updates: Object.keys(updateData) }, "Super Admin updated shipment details");
     return updated;
 }
 

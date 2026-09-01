@@ -56,6 +56,16 @@ export const patchShipmentSchema = z.discriminatedUnion("action", [
     z.object({ action: z.literal("ADD_AD") }).merge(addAdSchema),
     z.object({ action: z.literal("SKIP_FERI") }),
     z.object({ action: z.literal("COMPLETE") }),
+    z.object({
+        action: z.literal("EDIT_ADMIN"),
+        feriNumber: z.string().optional(),
+        proformaNumber: z.string().optional(),
+        containerCount: z.coerce.number().optional(),
+        clientName: z.string().optional(),
+        blNumber: z.string().optional(),
+        proformaAmountEUR: z.coerce.number().optional(),
+        commissionEUR: z.coerce.number().optional(),
+    }),
 ]);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,6 +98,7 @@ export const wellContainerSchema = z.object({
     id: z.string().optional(),
     containerNumber: z.string().min(1, "Container number is required").toUpperCase(),
     size: z.string().optional(),
+    containerType: z.string().optional().nullable(),
     weight: z.coerce.number().optional(),
     dischargeDate: z.string().optional().nullable(),
     gateOutDate: z.string().optional().nullable(),
@@ -105,6 +116,12 @@ export const createWellShipmentSchema = z.object({
     vesselName: z.string().optional().nullable(),
     eta: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
+    initialNote: z.string().optional().nullable(),
+    shippingLine: z.string().optional().nullable(),
+    origin: z.string().optional().nullable(),
+    destination: z.string().optional().nullable(),
+    finalDelivery: z.string().optional().nullable(),
+    transporter: z.string().optional().nullable(),
     containers: z.array(wellContainerSchema).optional(),
 });
 
@@ -119,6 +136,16 @@ export const updateWellShipmentSchema = z.object({
     notes: z.string().optional().nullable(),
     isPaid: z.boolean().optional(),
     containers: z.array(wellContainerSchema).optional(),
+    // Cargo OS Health & Stage
+    health: z.string().optional().nullable(),
+    healthReason: z.string().optional().nullable(),
+    currentStage: z.string().optional().nullable(),
+    assignedOperator: z.string().optional().nullable(),
+    shippingLine: z.string().optional().nullable(),
+    origin: z.string().optional().nullable(),
+    destination: z.string().optional().nullable(),
+    finalDelivery: z.string().optional().nullable(),
+    transporter: z.string().optional().nullable(),
     // Finance fields
     amount: z.coerce.number().optional().nullable(),
     roeKsh: z.coerce.number().optional().nullable(),
@@ -136,6 +163,25 @@ export const updateWellShipmentSchema = z.object({
     ddRecv: z.string().optional().nullable(),
     lodgedKpa: z.string().optional().nullable(),
     dateVerified: z.string().optional().nullable(),
+});
+
+export const createWellEventSchema = z.object({
+    title: z.string().min(1, "Event title is required"),
+    description: z.string().optional().nullable(),
+    stage: z.string().optional().nullable(),
+    source: z.string().default("MANUAL"),
+    updatedBy: z.string().optional().default("Operations"),
+    reference: z.string().optional().nullable(),
+});
+
+export const createWellExceptionSchema = z.object({
+    containerId: z.string().optional().nullable(),
+    issueType: z.string().min(1, "Issue type is required"),
+    severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).default("MEDIUM"),
+    description: z.string().min(1, "Description is required"),
+    expectedResolution: z.string().optional().nullable(),
+    assignedTo: z.string().optional().nullable(),
+    dueDate: z.string().optional().nullable(),
 });
 
 export type CreateShipmentInput = z.infer<typeof createShipmentSchema>;

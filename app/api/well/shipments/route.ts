@@ -14,10 +14,20 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
+    const health = searchParams.get("health");
+    const stage = searchParams.get("stage");
+    const q = searchParams.get("q");
+    const containerNumber = searchParams.get("containerNumber");
+    const excludePcharges = searchParams.get("excludePcharges") === "true";
 
     try {
         const shipments = await getWellShipments({
-            status: status || undefined
+            status: status || undefined,
+            health: health || undefined,
+            currentStage: stage || undefined,
+            q: q || undefined,
+            containerNumber: containerNumber || undefined,
+            excludePcharges
         });
         return NextResponse.json(shipments);
     } catch (error: any) {

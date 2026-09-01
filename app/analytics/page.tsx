@@ -2,35 +2,36 @@
 
 import { useEffect, useState, useRef } from "react";
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ResponsiveContainer,
-    LineChart,
-    Line,
-    AreaChart,
-    Area,
-    LabelList
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+    ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, LabelList
 } from "recharts";
 import { toast } from "sonner";
-import { Printer, Calendar, TrendingUp, Package, DollarSign, Download } from "lucide-react";
+import { Printer, Calendar, TrendingUp, Package, DollarSign, CheckCircle2, Navigation } from "lucide-react";
 import { apis } from "@/lib/api/apis";
 
 export default function AnalyticsPage() {
+    const [selectedMonth, setSelectedMonth] = useState("2026-08");
     const [data, setData] = useState<any>(null);
+    const [containersHandled, setContainersHandled] = useState<any[]>([]);
+    const [statusBreakdown, setStatusBreakdown] = useState<any>({ in_transit: 0, delivered: 0 });
+    const [completionData, setCompletionData] = useState<any>({ finished: 0, in_progress: 0 });
     const [loading, setLoading] = useState(true);
     const [months, setMonths] = useState(6);
-    const printRef = useRef<HTMLDivElement>(null);
 
-    const fetchAnalytics = async () => {
+    const fetchAnalytics = async (monthStr: string) => {
         setLoading(true);
         try {
-            const json = await apis.analytics.get(months);
+            const [json, handledRes, statusRes, completionRes] = await Promise.all([
+                apis.analytics.get(months),
+                fetch(`/api/analytics/containers-handled?month=${monthStr}`).then(r => r.json()),
+                fetch(`/api/analytics/container-status-breakdown?month=${monthStr}`).then(r => r.json()),
+                fetch(`/api/analytics/shipment-completion?month=${monthStr}`).then(r => r.json())
+            ]);
+
             setData(json);
+            setContainersHandled(Array.isArray(handledRes) ? handledRes : []);
+            setStatusBreakdown(statusRes || { in_transit: 0, delivered: 0 });
+            setCompletionData(completionRes || { finished: 0, in_progress: 0 });
         } catch {
             toast.error("Failed to load analytics");
         } finally {
@@ -39,8 +40,8 @@ export default function AnalyticsPage() {
     };
 
     useEffect(() => {
-        fetchAnalytics();
-    }, [months]);
+        fetchAnalytics(selectedMonth);
+    }, [months, selectedMonth]);
 
     const handlePrint = () => {
         window.print();
@@ -56,17 +57,9 @@ export default function AnalyticsPage() {
     );
 
     const qualitativeColors = [
-        "#0066cc", // OGEFREM Blue
-        "#ffcc00", // OGEFREM Yellow
-        "#004488", // Deep Blue
-        "#e6ac00", // Gold
-        "#003366", // Navy
-        "#ffd700", // Bright Gold
-        "#255e91", // Deep Blue
-        "#9e480e", // Deep Orange
+        "#0066cc", "#ffcc00", "#004488", "#e6ac00", "#003366", "#ffd700", "#255e91", "#9e480e"
     ];
 
-    // Pivot data: X-Axis = Client, Bars = Months
     const pivotedFinanceData = data?.allClients?.map((client: string) => {
         const clientRow: any = { clientName: client };
         data?.chartData?.forEach((monthData: any) => {
@@ -83,13 +76,15 @@ export default function AnalyticsPage() {
         return clientRow;
     }) || [];
 
-    const pivotedContainerData = data?.allClients?.map((client: string) => {
-        const clientRow: any = { clientName: client };
-        data?.chartData?.forEach((monthData: any) => {
-            clientRow[monthData.month] = monthData.clients[client]?.containerCount || 0;
-        });
-        return clientRow;
-    }) || [];
+    const pieStatusData = [
+        { name: "In Transit", value: statusBreakdown.in_transit || 0, color: "hsl(var(--primary))" },
+        { name: "Delivered", value: statusBreakdown.delivered || 0, color: "hsl(var(--success))" }
+    ];
+
+    const pieCompletionData = [
+        { name: "Finished (Released)", value: completionData.finished || 0, color: "hsl(var(--success))" },
+        { name: "In Progress", value: completionData.in_progress || 0, color: "hsl(var(--warning))" }
+    ];
 
     const allMonths = data?.chartData?.map((d: any) => d.month) || [];
 
@@ -118,31 +113,35 @@ export default function AnalyticsPage() {
                         background: white !important;
                         color: black !important;
                     }
-                    .print-header {
-                        display: block !important;
-                        margin-bottom: 2rem;
-                        text-align: center;
-                    }
-                    .print-only-label {
-                        display: block !important;
-                        font-family: inherit;
-                        font-weight: bold;
-                    }
-                }
-                .print-header {
-                    display: none;
-                }
-                .print-only-label {
-                    display: none;
                 }
             `}</style>
 
             <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
                 <div>
                     <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.25rem" }}>Business Analytics</h1>
-                    <p style={{ color: "hsl(var(--text-secondary))", fontSize: "0.9rem" }}>Performance overview for completed and final-stage shipments.</p>
+                    <p style={{ color: "hsl(var(--text-secondary))", fontSize: "0.9rem" }}>Performance overview for completed and active freight workflows.</p>
                 </div>
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+                    {/* Unified Month Selector */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "hsl(var(--surface-2))", padding: "0.35rem 0.75rem", borderRadius: "8px", border: "1px solid hsl(var(--border))" }}>
+                        <Calendar size={16} style={{ color: "hsl(var(--primary))" }} />
+                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "hsl(var(--text-muted))" }}>Month:</span>
+                        <input
+                            type="month"
+                            value={selectedMonth}
+                            onChange={e => setSelectedMonth(e.target.value)}
+                            style={{
+                                background: "hsl(var(--surface))",
+                                border: "1px solid hsl(var(--border))",
+                                color: "hsl(var(--text-primary))",
+                                padding: "0.3rem 0.5rem",
+                                borderRadius: "6px",
+                                fontSize: "0.82rem",
+                                fontWeight: 700
+                            }}
+                        />
+                    </div>
+
                     <div style={{ display: "flex", alignItems: "center", background: "hsl(var(--surface-2))", borderRadius: "0.5rem", padding: "0.25rem" }}>
                         {[3, 6, 12].map((m) => (
                             <button
@@ -159,7 +158,7 @@ export default function AnalyticsPage() {
                                     transition: "all 0.2s"
                                 }}
                             >
-                                {m}M
+                                {m}M Range
                             </button>
                         ))}
                     </div>
@@ -169,251 +168,85 @@ export default function AnalyticsPage() {
                 </div>
             </div>
 
-            <div className="print-header">
-                <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>OGEFREM WELL — Analytics Report</h1>
-                <p>Data period: last {months} months | Generated on {new Date().toLocaleDateString()}</p>
-            </div>
-
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                {/* Containers Handled Daily Volume Trend Chart */}
+                <div className="card" style={{ padding: "1.5rem" }}>
+                    <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <Package size={18} style={{ color: "hsl(var(--primary))" }} /> Containers Handled — Daily Trend ({selectedMonth})
+                    </h2>
+                    <div style={{ height: "280px", width: "100%" }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={containersHandled}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                                <XAxis dataKey="date" stroke="hsl(var(--text-muted))" fontSize={11} tickFormatter={(val) => val.split("-")[2]} />
+                                <YAxis stroke="hsl(var(--text-muted))" fontSize={11} />
+                                <Tooltip contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
 
-                {/* 1. Total Finance per Client (USD) */}
+                {/* 2-Category Breakdown Grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                    <div className="card" style={{ padding: "1.5rem" }}>
+                        <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <Navigation size={18} style={{ color: "hsl(var(--primary))" }} /> Container Status Breakdown ({selectedMonth})
+                        </h2>
+                        <div style={{ height: "240px", width: "100%" }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={pieStatusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label>
+                                        {pieStatusData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="card" style={{ padding: "1.5rem" }}>
+                        <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <CheckCircle2 size={18} style={{ color: "hsl(var(--success))" }} /> Shipments Finished vs In Progress ({selectedMonth})
+                        </h2>
+                        <div style={{ height: "240px", width: "100%" }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={pieCompletionData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label>
+                                        {pieCompletionData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Total Finance per Client */}
                 <div className="card">
                     <h2 style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: 700, marginBottom: "2rem" }}>
                         Total Finance per Client (USD)
                     </h2>
-                    <div style={{ height: "450px", width: "100%" }}>
+                    <div style={{ height: "400px", width: "100%" }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={pivotedFinanceData} margin={{ top: 30, right: 120, left: 40, bottom: 120 }}>
                                 <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border) / 0.5)" vertical={false} />
-                                <XAxis
-                                    dataKey="clientName"
-                                    stroke="hsl(var(--text-primary))"
-                                    tickLine={true}
-                                    axisLine={true}
-                                    interval={0}
-                                    tick={{ angle: -35, textAnchor: 'end', fontSize: 10, dy: 10 }}
-                                    label={{ value: "Client", position: "bottom", offset: 90, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
-                                />
-                                <YAxis
-                                    stroke="hsl(var(--text-primary))"
-                                    fontSize={12}
-                                    tickLine={true}
-                                    axisLine={true}
-                                    tickFormatter={(v) => v.toLocaleString()}
-                                    label={{ value: "Amount (USD)", angle: -90, position: "insideLeft", offset: -20, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: "hsl(var(--primary) / 0.05)" }}
-                                    contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
-                                />
-                                <Legend
-                                    layout="vertical"
-                                    verticalAlign="middle"
-                                    align="right"
-                                    wrapperStyle={{ paddingLeft: "20px" }}
-                                />
+                                <XAxis dataKey="clientName" stroke="hsl(var(--text-primary))" tickLine={true} axisLine={true} interval={0} tick={{ angle: -35, textAnchor: 'end', fontSize: 10, dy: 10 }} />
+                                <YAxis stroke="hsl(var(--text-primary))" fontSize={12} tickFormatter={(v) => v.toLocaleString()} />
+                                <Tooltip contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "6px" }} />
+                                <Legend layout="vertical" verticalAlign="middle" align="right" />
                                 {allMonths.map((month: string, idx: number) => (
-                                    <Bar
-                                        key={month}
-                                        dataKey={month}
-                                        name={month}
-                                        fill={qualitativeColors[idx % qualitativeColors.length]}
-                                        stroke="#333"
-                                        strokeWidth={0.5}
-                                        radius={0}
-                                    >
-                                        <LabelList
-                                            dataKey={month}
-                                            position="top"
-                                            className="print-only-label"
-                                            fill={qualitativeColors[idx % qualitativeColors.length]}
-                                            fontSize={11}
-                                            formatter={(val: any) => (val && Number(val) > 0 ? Number(val).toLocaleString() : "")}
-                                        />
-                                    </Bar>
+                                    <Bar key={month} dataKey={month} name={month} fill={qualitativeColors[idx % qualitativeColors.length]} />
                                 ))}
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                </div>
-
-                {/* 2. Total WELL Revenue per Client (USD) */}
-                <div className="card">
-                    <h2 style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: 700, marginBottom: "2rem" }}>
-                        Total WELL Revenue per Client (USD)
-                    </h2>
-                    <div style={{ height: "450px", width: "100%" }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={pivotedWellData} margin={{ top: 30, right: 120, left: 40, bottom: 120 }}>
-                                <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border) / 0.5)" vertical={false} />
-                                <XAxis
-                                    dataKey="clientName"
-                                    stroke="hsl(var(--text-primary))"
-                                    tickLine={true}
-                                    axisLine={true}
-                                    interval={0}
-                                    tick={{ angle: -35, textAnchor: 'end', fontSize: 10, dy: 10 }}
-                                    label={{ value: "Client", position: "bottom", offset: 90, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
-                                />
-                                <YAxis
-                                    stroke="hsl(var(--text-primary))"
-                                    fontSize={12}
-                                    tickLine={true}
-                                    axisLine={true}
-                                    tickFormatter={(v) => v.toLocaleString()}
-                                    label={{ value: "WELL Revenue (USD)", angle: -90, position: "insideLeft", offset: -20, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: "hsl(var(--primary) / 0.05)" }}
-                                    contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
-                                />
-                                <Legend
-                                    layout="vertical"
-                                    verticalAlign="middle"
-                                    align="right"
-                                    wrapperStyle={{ paddingLeft: "20px" }}
-                                />
-                                {allMonths.map((month: string, idx: number) => (
-                                    <Bar
-                                        key={month}
-                                        dataKey={month}
-                                        name={month}
-                                        fill={qualitativeColors[idx % qualitativeColors.length]}
-                                        stroke="#333"
-                                        strokeWidth={0.5}
-                                        radius={0}
-                                    >
-                                        <LabelList
-                                            dataKey={month}
-                                            position="top"
-                                            className="print-only-label"
-                                            fill={qualitativeColors[idx % qualitativeColors.length]}
-                                            fontSize={11}
-                                            formatter={(val: any) => (val && Number(val) > 0 ? Number(val).toLocaleString() : "")}
-                                        />
-                                    </Bar>
-                                ))}
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* 3. Total Containers per Client */}
-                <div className="card">
-                    <h2 style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: 700, marginBottom: "2rem" }}>
-                        Total Containers per Client
-                    </h2>
-                    <div style={{ height: "450px", width: "100%" }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={pivotedContainerData} margin={{ top: 30, right: 120, left: 40, bottom: 120 }}>
-                                <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border) / 0.5)" vertical={false} />
-                                <XAxis
-                                    dataKey="clientName"
-                                    stroke="hsl(var(--text-primary))"
-                                    tickLine={true}
-                                    axisLine={true}
-                                    interval={0}
-                                    tick={{ angle: -35, textAnchor: 'end', fontSize: 10, dy: 10 }}
-                                    label={{ value: "Client", position: "bottom", offset: 90, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
-                                />
-                                <YAxis
-                                    stroke="hsl(var(--text-primary))"
-                                    fontSize={12}
-                                    tickLine={true}
-                                    axisLine={true}
-                                    tickFormatter={(v) => v.toLocaleString()}
-                                    label={{ value: "Containers", angle: -90, position: "insideLeft", offset: -20, fontSize: 14, fontWeight: 700, fill: "hsl(var(--text-primary))" }}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: "hsl(var(--primary) / 0.05)" }}
-                                    contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
-                                />
-                                <Legend
-                                    layout="vertical"
-                                    verticalAlign="middle"
-                                    align="right"
-                                    wrapperStyle={{ paddingLeft: "20px" }}
-                                />
-                                {allMonths.map((month: string, idx: number) => (
-                                    <Bar
-                                        key={month}
-                                        dataKey={month}
-                                        name={month}
-                                        fill={qualitativeColors[idx % qualitativeColors.length]}
-                                        stroke="#333"
-                                        strokeWidth={0.5}
-                                        radius={0}
-                                    >
-                                        <LabelList
-                                            dataKey={month}
-                                            position="top"
-                                            className="print-only-label"
-                                            fill={qualitativeColors[idx % qualitativeColors.length]}
-                                            fontSize={11}
-                                            formatter={(val: any) => (val && Number(val) > 0 ? Number(val).toLocaleString() : "")}
-                                        />
-                                    </Bar>
-                                ))}
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(450px, 1fr))", gap: "1.5rem" }}>
-                    {/* 2. Total WELL (REV) per month */}
-                    <div className="card">
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
-                            <div style={{ padding: "0.5rem", background: "hsl(var(--success) / 0.15)", borderRadius: "0.5rem", color: "hsl(var(--success))" }}>
-                                <TrendingUp size={20} />
-                            </div>
-                            <h3 style={{ margin: 0 }}>WELL Representation Revenue</h3>
-                        </div>
-                        <div style={{ height: "300px", width: "100%" }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={data?.chartData}>
-                                    <defs>
-                                        <linearGradient id="colorWell" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.4)" vertical={false} />
-                                    <XAxis dataKey="month" stroke="hsl(var(--text-primary))" fontSize={11} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="hsl(var(--text-primary))" fontSize={11} tickLine={false} axisLine={false} />
-                                    <Tooltip
-                                        cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1, strokeDasharray: "4 4" }}
-                                        contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
-                                    />
-                                    <Area type="monotone" dataKey="wellRev" name="WELL Rev (USD)" stroke="hsl(var(--success))" fillOpacity={1} fill="url(#colorWell)" strokeWidth={3} activeDot={{ r: 6, strokeWidth: 0, fill: "hsl(var(--success))" }} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    {/* 3. Total Containers per month */}
-                    <div className="card">
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
-                            <div style={{ padding: "0.5rem", background: "hsl(var(--warning) / 0.15)", borderRadius: "0.5rem", color: "hsl(var(--warning))" }}>
-                                <Package size={20} />
-                            </div>
-                            <h3 style={{ margin: 0 }}>Container Volume</h3>
-                        </div>
-                        <div style={{ height: "300px", width: "100%" }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={data?.chartData}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.4)" vertical={false} />
-                                    <XAxis dataKey="month" stroke="hsl(var(--text-primary))" fontSize={11} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="hsl(var(--text-primary))" fontSize={11} tickLine={false} axisLine={false} />
-                                    <Tooltip
-                                        cursor={{ fill: "hsl(var(--primary) / 0.05)" }}
-                                        contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
-                                    />
-                                    <Bar dataKey="containerCount" name="Total Containers" fill="hsl(var(--warning))" stroke="#333" strokeWidth={0.5} radius={[2, 2, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </div>

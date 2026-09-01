@@ -80,7 +80,18 @@ export const apis = {
         getNextInvoiceNumber: () => fetch("/api/invoices/next-number").then(handleResponse),
     },
     well: {
-        getShipments: () => fetch("/api/well/shipments").then(handleResponse),
+        getShipments: (params?: Record<string, string | boolean | undefined>) => {
+            const query = new URLSearchParams();
+            if (params) {
+                Object.entries(params).forEach(([key, val]) => {
+                    if (val !== undefined && val !== null && val !== "") {
+                        query.set(key, String(val));
+                    }
+                });
+            }
+            const url = query.toString() ? `/api/well/shipments?${query.toString()}` : "/api/well/shipments";
+            return fetch(url).then(handleResponse);
+        },
         getShipment: (id: string) => fetch(`/api/well/shipments/${id}`).then(handleResponse),
         updateShipment: (id: string, data: any) => fetch(`/api/well/shipments/${id}`, {
             method: "PATCH",
@@ -91,6 +102,30 @@ export const apis = {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
+        }).then(handleResponse),
+        addEvent: (id: string, eventData: any) => fetch(`/api/well/shipments/${id}/events`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(eventData),
+        }).then(handleResponse),
+        addNote: (id: string, note: string) => fetch(`/api/well/shipments/${id}/notes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ note }),
+        }).then(handleResponse),
+        getNotes: (id: string) => fetch(`/api/well/shipments/${id}/notes`).then(handleResponse),
+        verifyPayment: (id: string) => fetch(`/api/well/shipments/${id}/verify-payment`, {
+            method: "POST"
+        }).then(handleResponse),
+        reportException: (id: string, exceptionData: any) => fetch(`/api/well/shipments/${id}/exceptions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(exceptionData),
+        }).then(handleResponse),
+        resolveException: (exceptionId: string, notes?: string) => fetch(`/api/well/exceptions/${exceptionId}/resolve`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ notes }),
         }).then(handleResponse),
         uploadDocument: (id: string, formData: FormData) => fetch(`/api/well/shipments/${id}/documents`, {
             method: "POST",
