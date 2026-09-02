@@ -353,3 +353,10 @@ export function Drawer({
         document.body
     );
 }
+
+/**
+ * Slideover Component Alias (Addendum 6 Standard)
+ */
+export const Slideover = Drawer;
+export type SlideoverProps = DrawerProps;
+

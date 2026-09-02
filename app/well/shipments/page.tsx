@@ -210,13 +210,13 @@ export default function WellShipmentsListPage() {
                         <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "hsl(var(--text-primary))", margin: 0 }}>
                             Shipments Tracking Workspace
                         </h1>
-                        <span style={{
+                        {/* <span style={{
                             padding: "0.25rem 0.6rem", borderRadius: "4px",
                             background: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))",
                             fontWeight: 700, fontSize: "0.75rem", border: "1px solid hsl(var(--primary) / 0.3)"
                         }}>
                             CARGO OS HUB
-                        </span>
+                        </span> */}
                     </div>
                     <p style={{ color: "hsl(var(--text-secondary))", fontSize: "0.9rem" }}>
                         Comprehensive freight forwarding shipment register, health monitoring & journey tracking

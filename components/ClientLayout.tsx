@@ -105,7 +105,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: "rgba(0,0,0,0.6)",
             backdropFilter: "blur(4px)",
             zIndex: 90,
           }}
@@ -116,7 +116,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       <aside
         className="no-print"
         style={{
-          width: isMobile ? "240px" : sidebarWidth,
+          width: isMobile ? "280px" : sidebarWidth,
           flexShrink: 0,
           background: "hsl(var(--sidebar-bg))",
           borderRight: "1px solid hsl(var(--sidebar-border))",
@@ -126,54 +126,76 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           padding: "0",
           position: "fixed",
           top: 0,
-          left: isMobile && !isMobileMenuOpen ? "-240px" : 0,
+          left: 0,
           bottom: 0,
           zIndex: 100,
-          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          transform: isMobile ? (isMobileMenuOpen ? "translateX(0)" : "translateX(-100%)") : "none",
+          transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          boxShadow: isMobile && isMobileMenuOpen ? "4px 0 24px rgba(0,0,0,0.4)" : "none",
         }}
       >
-        {/* Logo Section */}
+        {/* Logo Section / Branding Header */}
         <div
           onClick={() => isCollapsed && !isMobile && setIsCollapsed(false)}
           style={{
             height: "64px",
             display: "flex",
             alignItems: "center",
-            padding: "0 0.75rem",
-            justifyContent: isCollapsed && !isMobile ? "center" : "flex-start",
+            padding: "0 0.85rem",
+            justifyContent: isCollapsed && !isMobile ? "center" : "space-between",
             borderBottom: "1px solid hsl(var(--sidebar-border))",
             overflow: "hidden",
             position: "sticky",
             top: 0,
             zIndex: 20,
             backgroundColor: "hsl(var(--sidebar-bg))",
-            gap: "0.25rem",
+            gap: "0.5rem",
             cursor: isCollapsed && !isMobile ? "pointer" : "default"
           }}
         >
-          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: isCollapsed && !isMobile ? "40px" : "48px" }}>
-            <img
-              src="/logo2.png"
-              alt="OGEFREM"
-              style={{
-                height: isCollapsed && !isMobile ? "20px" : "30px",
-                width: "auto",
-                objectFit: "contain",
-                transition: "all 0.3s ease",
-                filter: theme === "dark" ? "drop-shadow(0 0 4px rgba(255,255,255,0.1))" : "none"
-              }}
-            />
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: isCollapsed && !isMobile ? "40px" : "36px" }}>
+              <img
+                src="/logo2.png"
+                alt="OGEFREM"
+                style={{
+                  height: isCollapsed && !isMobile ? "20px" : "30px",
+                  width: "auto",
+                  objectFit: "contain",
+                  transition: "all 0.3s ease",
+                  filter: theme === "dark" ? "drop-shadow(0 0 4px rgba(255,255,255,0.1))" : "none"
+                }}
+              />
+            </div>
+
+            {(!isCollapsed || isMobile) && (
+              <div style={{ whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: "0.85rem", color: "hsl(var(--primary))", fontWeight: 800, letterSpacing: "0.06em" }}>
+                  WELL OPS
+                </div>
+              </div>
+            )}
           </div>
 
-          {(!isCollapsed || isMobile) && (
-            <div style={{ whiteSpace: "nowrap", opacity: isCollapsed && !isMobile ? 0 : 1, transition: "opacity 0.2s", marginLeft: "0.5rem" }}>
-              <div style={{ fontSize: "0.75rem", color: "hsl(var(--primary))", fontWeight: 700, letterSpacing: "0.05em" }}>
-                WELL OPS
-              </div>
-              {/* <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "hsl(var(--text-primary))", letterSpacing: "0.02em" }}>
-                OGEFREM
-              </div> */}
-            </div>
+          {/* Close button on mobile */}
+          {isMobile && (
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              aria-label="Close menu"
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "hsl(var(--text-muted))",
+                padding: "0.4rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "6px",
+                cursor: "pointer"
+              }}
+            >
+              <X size={20} />
+            </button>
           )}
         </div>
 
@@ -181,7 +203,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         <nav style={{ padding: "1rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.25rem", flex: 1 }}>
 
           {/* WELL Section */}
-          {(session?.user?.department === "WELL" || session?.user?.department === "ADMIN") && (
+          {(session?.user?.department === "WELL" || session?.user?.department === "ADMIN" || !session) && (
             <>
               {session?.user?.department === "ADMIN" && (
                 <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "hsl(var(--text-muted))", padding: "0.5rem 0.75rem", marginTop: "0.5rem", letterSpacing: "0.05em" }}>WELL LOGISTICS</div>
@@ -194,9 +216,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 isActive={pathname === "/well"}
                 onClick={() => isMobile && setIsMobileMenuOpen(false)}
               />
-              {!isCollapsed && !isMobile && (
-                <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "hsl(var(--primary))", padding: "0.75rem 0.75rem 0.25rem", letterSpacing: "0.06em", opacity: 0.8 }}>CARGO OS</div>
-              )}
+
+              {/* CARGO OS Section Divider Header */}
+              {/* {(!isCollapsed || isMobile) && (
+                <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "hsl(var(--primary))", padding: "0.85rem 0.75rem 0.25rem", letterSpacing: "0.08em", opacity: 0.9 }}>
+                  CARGO OS
+                </div>
+              )} */}
+
               <NavLink
                 href="/well/shipments"
                 icon={<Ship size={20} />}

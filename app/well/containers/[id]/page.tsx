@@ -12,7 +12,8 @@ import {
     Layers, Package, Activity, History
 } from "lucide-react";
 import Breadcrumbs from "@/components/well/Breadcrumbs";
-import { Button, Input, FormSection } from "@/components/well/FormControls";
+import { Button, Input, Select, Textarea, FormSection, FormRow } from "@/components/well/FormControls";
+import { Slideover } from "@/components/well/Modal";
 
 export default function ContainerDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -690,204 +691,194 @@ export default function ContainerDetailPage({ params }: { params: Promise<{ id: 
                 </div>
             )}
 
-            {/* COMPREHENSIVE UPDATE DRAWER — matches shipment edit drawer style */}
-            {showEditDrawer && (
-                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1100, display: "flex", justifyContent: "flex-end" }}>
-                    <div className="card" style={{ width: "100%", maxWidth: "560px", height: "100%", borderRadius: 0, overflowY: "auto", padding: "0", background: "hsl(var(--surface))" }}>
+            {/* COMPREHENSIVE UPDATE SLIDEOVER — uses shared Slideover component (Addendum 6 standard) */}
+            <Slideover
+                open={showEditDrawer}
+                onClose={() => setShowEditDrawer(false)}
+                title="Edit Container Tracking"
+                subtitle={`${container.containerNumber || container.chassisNumber || "Container"} — ${shipment?.refNumber || "Shipment"}`}
+                width="560px"
+                footer={
+                    <>
+                        <Button type="button" variant="ghost" onClick={() => setShowEditDrawer(false)}>Cancel</Button>
+                        <Button type="submit" form="container-edit-detail-form" loading={saving}>Save All Changes</Button>
+                    </>
+                }
+            >
+                <form id="container-edit-detail-form" onSubmit={handleUpdate} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
-                        {/* Drawer Header */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", borderBottom: "1px solid hsl(var(--border))", position: "sticky", top: 0, background: "hsl(var(--surface))", zIndex: 10 }}>
-                            <div>
-                                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "hsl(var(--primary))" }}>Edit Container Record</h2>
-                                <div style={{ fontSize: "0.78rem", color: "hsl(var(--text-muted))", marginTop: "0.2rem" }}>
-                                    {container.containerNumber || container.chassisNumber || "Container"} · {shipment?.refNumber}
-                                </div>
-                            </div>
-                            <button onClick={() => setShowEditDrawer(false)} className="btn btn-ghost" style={{ padding: "0.5rem" }}><X size={20} /></button>
-                        </div>
+                    {/* SECTION 1: Container Identification */}
+                    <FormSection title="Container Identification">
+                        <FormRow>
+                            <Input
+                                label="Container Number"
+                                mono
+                                value={editForm.containerNumber}
+                                onChange={e => setEditForm({ ...editForm, containerNumber: e.target.value })}
+                                placeholder="e.g. TGBU3222408"
+                            />
+                            <Input
+                                label="Chassis / Unit Number"
+                                mono
+                                value={editForm.chassisNumber}
+                                onChange={e => setEditForm({ ...editForm, chassisNumber: e.target.value })}
+                                placeholder="e.g. CN1234567"
+                            />
+                        </FormRow>
+                        <FormRow>
+                            <Input
+                                label="Seal Number"
+                                mono
+                                value={editForm.sealNumber}
+                                onChange={e => setEditForm({ ...editForm, sealNumber: e.target.value })}
+                                placeholder="e.g. SL482910"
+                            />
+                            <Select
+                                label="Size (ft)"
+                                value={editForm.size}
+                                onChange={e => setEditForm({ ...editForm, size: e.target.value })}
+                            >
+                                <option value="">Select size…</option>
+                                <option value="20">20'</option>
+                                <option value="40">40'</option>
+                                <option value="45">45'</option>
+                            </Select>
+                        </FormRow>
+                        <FormRow>
+                            <Select
+                                label="Container Type"
+                                value={editForm.containerType}
+                                onChange={e => setEditForm({ ...editForm, containerType: e.target.value })}
+                            >
+                                <option value="">Select type…</option>
+                                <option value="DRY">DRY</option>
+                                <option value="HC">HIGH CUBE (HC)</option>
+                                <option value="RF">REEFER (RF)</option>
+                                <option value="OT">OPEN TOP (OT)</option>
+                                <option value="TK">TANK (TK)</option>
+                                <option value="FR">FLAT RACK (FR)</option>
+                            </Select>
+                            <Input label="Gross Weight (KG)" type="number" value={editForm.grossWeightKg} onChange={e => setEditForm({ ...editForm, grossWeightKg: e.target.value })} placeholder="e.g. 16308" />
+                        </FormRow>
+                        <FormRow>
+                            <Input label="Net Weight (KG)" type="number" value={editForm.netWeightKg} onChange={e => setEditForm({ ...editForm, netWeightKg: e.target.value })} placeholder="e.g. 14200" />
+                            <Input label="Volume (CBM)" type="number" value={editForm.volumeCbm} onChange={e => setEditForm({ ...editForm, volumeCbm: e.target.value })} placeholder="e.g. 67.5" />
+                        </FormRow>
+                    </FormSection>
 
-                        <form onSubmit={handleUpdate} style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                    {/* SECTION 2: Trucking & Driver Assignment */}
+                    <FormSection title="Trucking & Driver Assignment">
+                        <Input
+                            label="Assigned Truck (Reg. Plate / Trailer)"
+                            value={editForm.truckDetails}
+                            onChange={e => setEditForm({ ...editForm, truckDetails: e.target.value })}
+                            placeholder="e.g. KCU 901J / Trailer #481"
+                        />
+                        <FormRow>
+                            <Input
+                                label="Driver Name"
+                                value={editForm.driverName}
+                                onChange={e => setEditForm({ ...editForm, driverName: e.target.value })}
+                                placeholder="Full driver name"
+                            />
+                            <Input
+                                label="Driver ID / Licence No."
+                                value={editForm.driverIdNumber}
+                                onChange={e => setEditForm({ ...editForm, driverIdNumber: e.target.value })}
+                                placeholder="e.g. DL-28491-KE"
+                                required={!!editForm.driverName.trim()}
+                                error={editForm.driverName.trim() && !editForm.driverIdNumber.trim() ? "Driver ID Number is required when Driver Name is provided." : undefined}
+                            />
+                        </FormRow>
+                    </FormSection>
 
-                            {/* SECTION 1: Container Identification */}
-                            <FormSection title="Container Identification">
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
-                                    <Input
-                                        label="Container Number"
-                                        value={editForm.containerNumber}
-                                        onChange={e => setEditForm({ ...editForm, containerNumber: e.target.value })}
-                                        placeholder="e.g. TGBU3222408"
-                                    />
-                                    <Input
-                                        label="Chassis / Unit Number"
-                                        value={editForm.chassisNumber}
-                                        onChange={e => setEditForm({ ...editForm, chassisNumber: e.target.value })}
-                                        placeholder="e.g. CN1234567"
-                                    />
-                                    <Input
-                                        label="Seal Number"
-                                        value={editForm.sealNumber}
-                                        onChange={e => setEditForm({ ...editForm, sealNumber: e.target.value })}
-                                        placeholder="e.g. SL482910"
-                                    />
-                                    <div>
-                                        <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "hsl(var(--text-secondary))", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: "0.35rem" }}>Size (ft)</label>
-                                        <select
-                                            value={editForm.size}
-                                            onChange={e => setEditForm({ ...editForm, size: e.target.value })}
-                                            style={{ width: "100%", height: "40px", padding: "0 0.75rem", borderRadius: "6px", border: "1px solid hsl(var(--border))", background: "hsl(var(--surface-2))", color: "hsl(var(--text-primary))", fontSize: "0.88rem" }}
-                                        >
-                                            <option value="">Select size…</option>
-                                            <option value="20">20'</option>
-                                            <option value="40">40'</option>
-                                            <option value="45">45'</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "hsl(var(--text-secondary))", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: "0.35rem" }}>Container Type</label>
-                                        <select
-                                            value={editForm.containerType}
-                                            onChange={e => setEditForm({ ...editForm, containerType: e.target.value })}
-                                            style={{ width: "100%", height: "40px", padding: "0 0.75rem", borderRadius: "6px", border: "1px solid hsl(var(--border))", background: "hsl(var(--surface-2))", color: "hsl(var(--text-primary))", fontSize: "0.88rem" }}
-                                        >
-                                            <option value="">Select type…</option>
-                                            <option value="DRY">DRY</option>
-                                            <option value="HC">HIGH CUBE (HC)</option>
-                                            <option value="RF">REEFER (RF)</option>
-                                            <option value="OT">OPEN TOP (OT)</option>
-                                            <option value="TK">TANK (TK)</option>
-                                            <option value="FR">FLAT RACK (FR)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginTop: "0.25rem" }}>
-                                    <Input label="Gross Weight (KG)" type="number" value={editForm.grossWeightKg} onChange={e => setEditForm({ ...editForm, grossWeightKg: e.target.value })} placeholder="e.g. 16308" />
-                                    <Input label="Net Weight (KG)" type="number" value={editForm.netWeightKg} onChange={e => setEditForm({ ...editForm, netWeightKg: e.target.value })} placeholder="e.g. 14200" />
-                                    <Input label="Volume (CBM)" type="number" value={editForm.volumeCbm} onChange={e => setEditForm({ ...editForm, volumeCbm: e.target.value })} placeholder="e.g. 67.5" />
-                                </div>
-                            </FormSection>
+                    {/* SECTION 3: Operational Status & Dates */}
+                    <FormSection title="Operational Status & Dates">
+                        <Select
+                            label="Container Status"
+                            value={editForm.status}
+                            onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                        >
+                            <option value="">Select status…</option>
+                            <option value="AWAITING_ARRIVAL">Awaiting Arrival</option>
+                            <option value="DISCHARGED">Discharged at Port</option>
+                            <option value="GATED_OUT">Gated Out</option>
+                            <option value="IN_TRANSIT">In Transit</option>
+                            <option value="DELIVERED">Delivered to Client</option>
+                            <option value="RETURNED">Empty Returned to Shipping Line</option>
+                        </Select>
+                        <FormRow>
+                            <Input label="Discharge Date" type="date" value={editForm.dischargeDate} onChange={e => setEditForm({ ...editForm, dischargeDate: e.target.value })} />
+                            <Input label="Gate Out Date" type="date" value={editForm.gateOutDate} onChange={e => setEditForm({ ...editForm, gateOutDate: e.target.value })} />
+                        </FormRow>
+                    </FormSection>
 
-                            {/* SECTION 2: Trucking Assignment */}
-                            <FormSection title="Trucking & Driver Assignment">
-                                <Input
-                                    label="Assigned Truck (Reg. Plate / Trailer)"
-                                    value={editForm.truckDetails}
-                                    onChange={e => setEditForm({ ...editForm, truckDetails: e.target.value })}
-                                    placeholder="e.g. KCU 901J / Trailer #481"
-                                />
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
-                                    <Input
-                                        label="Driver Name"
-                                        value={editForm.driverName}
-                                        onChange={e => setEditForm({ ...editForm, driverName: e.target.value })}
-                                        placeholder="Full name"
-                                    />
-                                    <Input
-                                        label="Driver ID / Licence No."
-                                        value={editForm.driverIdNumber}
-                                        onChange={e => setEditForm({ ...editForm, driverIdNumber: e.target.value })}
-                                        placeholder="e.g. DL-28491-KE"
-                                        required={!!editForm.driverName.trim()}
-                                    />
-                                </div>
-                                {editForm.driverName.trim() && !editForm.driverIdNumber.trim() && (
-                                    <p style={{ fontSize: "0.78rem", color: "#ef4444", margin: "0.25rem 0 0" }}>Driver ID Number is required when a driver is assigned.</p>
-                                )}
-                            </FormSection>
+                    {/* SECTION 4: KWATOS Terminal Data */}
+                    <FormSection title="KWATOS Terminal Data (Manual Entry)">
+                        <FormRow>
+                            <Input label="Yard Position" value={editForm.kwatosYardPosition} onChange={e => setEditForm({ ...editForm, kwatosYardPosition: e.target.value })} placeholder="e.g. SN/08/B/3" />
+                            <Input label="Operator" value={editForm.kwatosOperator} onChange={e => setEditForm({ ...editForm, kwatosOperator: e.target.value })} placeholder="e.g. MAE" />
+                        </FormRow>
+                        <FormRow>
+                            <Input label="SzTp" value={editForm.kwatosSzTp} onChange={e => setEditForm({ ...editForm, kwatosSzTp: e.target.value })} placeholder="e.g. 45G0" />
+                            <Input label="Gate In Category" value={editForm.kwatosGateInCat} onChange={e => setEditForm({ ...editForm, kwatosGateInCat: e.target.value })} placeholder="e.g. FCL" />
+                        </FormRow>
+                        <FormRow>
+                            <Input label="KWATOS Vessel" value={editForm.kwatosVessel} onChange={e => setEditForm({ ...editForm, kwatosVessel: e.target.value })} placeholder="Vessel name" />
+                            <Input label="Voyage" value={editForm.kwatosVoyage} onChange={e => setEditForm({ ...editForm, kwatosVoyage: e.target.value })} placeholder="e.g. IU520265937" />
+                        </FormRow>
+                        <FormRow>
+                            <Input label="Forwarder" value={editForm.kwatosForwarder} onChange={e => setEditForm({ ...editForm, kwatosForwarder: e.target.value })} placeholder="Forwarder name" />
+                            <Input label="Trucker" value={editForm.kwatosTrucker} onChange={e => setEditForm({ ...editForm, kwatosTrucker: e.target.value })} placeholder="Trucker company" />
+                        </FormRow>
+                        <FormRow>
+                            <Input label="Customs Status" value={editForm.kwatosCustomsStatus} onChange={e => setEditForm({ ...editForm, kwatosCustomsStatus: e.target.value })} placeholder="e.g. Release" />
+                            <Input label="Approval No." value={editForm.kwatosApprovalNo} onChange={e => setEditForm({ ...editForm, kwatosApprovalNo: e.target.value })} placeholder="e.g. 26MBATR805661313" />
+                        </FormRow>
+                        <Textarea
+                            label="Commodity Description"
+                            value={editForm.kwatosCommodity}
+                            onChange={e => setEditForm({ ...editForm, kwatosCommodity: e.target.value })}
+                            rows={2}
+                            placeholder="e.g. Medical, surgical or laboratory sterilisers."
+                        />
+                    </FormSection>
 
-                            {/* SECTION 3: Operational Dates & Status */}
-                            <FormSection title="Operational Status & Dates">
-                                <div>
-                                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "hsl(var(--text-secondary))", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: "0.35rem" }}>Container Status</label>
-                                    <select
-                                        value={editForm.status}
-                                        onChange={e => setEditForm({ ...editForm, status: e.target.value })}
-                                        style={{ width: "100%", height: "40px", padding: "0 0.75rem", borderRadius: "6px", border: "1px solid hsl(var(--border))", background: "hsl(var(--surface-2))", color: "hsl(var(--text-primary))", fontSize: "0.88rem" }}
-                                    >
-                                        <option value="">Select status…</option>
-                                        <option value="AWAITING_ARRIVAL">Awaiting Arrival</option>
-                                        <option value="DISCHARGED">Discharged at Port</option>
-                                        <option value="GATED_OUT">Gated Out</option>
-                                        <option value="IN_TRANSIT">In Transit</option>
-                                        <option value="DELIVERED">Delivered to Client</option>
-                                        <option value="RETURNED">Empty Returned to Shipping Line</option>
-                                    </select>
-                                </div>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
-                                    <Input label="Discharge Date" type="date" value={editForm.dischargeDate} onChange={e => setEditForm({ ...editForm, dischargeDate: e.target.value })} />
-                                    <Input label="Gate Out Date" type="date" value={editForm.gateOutDate} onChange={e => setEditForm({ ...editForm, gateOutDate: e.target.value })} />
-                                </div>
-                            </FormSection>
+                    {/* SECTION 5: Interchange & Return */}
+                    <FormSection title="Interchange & Empty Return">
+                        <FormRow>
+                            <Input label="Interchange Ref No." value={editForm.interchangeRef} onChange={e => setEditForm({ ...editForm, interchangeRef: e.target.value })} placeholder="e.g. IC-2026-98201" />
+                            <Input label="Return Depot" value={editForm.interchangeDepot} onChange={e => setEditForm({ ...editForm, interchangeDepot: e.target.value })} placeholder="e.g. Maersk Depot - Shimanzi" />
+                        </FormRow>
+                        <FormRow>
+                            <Input label="Return Date" type="date" value={editForm.interchangeReturnDate} onChange={e => setEditForm({ ...editForm, interchangeReturnDate: e.target.value })} />
+                            <Input label="Container Condition" value={editForm.interchangeCondition} onChange={e => setEditForm({ ...editForm, interchangeCondition: e.target.value })} placeholder="e.g. CLEAN / GOOD" />
+                        </FormRow>
+                        <Select
+                            label="Interchange Status"
+                            value={editForm.interchangeStatus}
+                            onChange={e => setEditForm({ ...editForm, interchangeStatus: e.target.value })}
+                        >
+                            <option value="">Select status…</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="INTERCHANGE_RECEIVED">Interchange Received</option>
+                            <option value="RETURNED">Returned</option>
+                        </Select>
+                    </FormSection>
 
-                            {/* SECTION 4: KWATOS Terminal Data (manual entry) */}
-                            <FormSection title="KWATOS Terminal Data (Manual Entry)">
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
-                                    <Input label="Yard Position" value={editForm.kwatosYardPosition} onChange={e => setEditForm({ ...editForm, kwatosYardPosition: e.target.value })} placeholder="e.g. SN/08/B/3" />
-                                    <Input label="Operator" value={editForm.kwatosOperator} onChange={e => setEditForm({ ...editForm, kwatosOperator: e.target.value })} placeholder="e.g. MAE" />
-                                    <Input label="SzTp" value={editForm.kwatosSzTp} onChange={e => setEditForm({ ...editForm, kwatosSzTp: e.target.value })} placeholder="e.g. 45G0" />
-                                    <Input label="Gate In Category" value={editForm.kwatosGateInCat} onChange={e => setEditForm({ ...editForm, kwatosGateInCat: e.target.value })} placeholder="e.g. FCL" />
-                                    <Input label="KWATOS Vessel" value={editForm.kwatosVessel} onChange={e => setEditForm({ ...editForm, kwatosVessel: e.target.value })} placeholder="Vessel name" />
-                                    <Input label="Voyage" value={editForm.kwatosVoyage} onChange={e => setEditForm({ ...editForm, kwatosVoyage: e.target.value })} placeholder="e.g. IU520265937" />
-                                    <Input label="Forwarder" value={editForm.kwatosForwarder} onChange={e => setEditForm({ ...editForm, kwatosForwarder: e.target.value })} placeholder="Forwarder name" />
-                                    <Input label="Trucker" value={editForm.kwatosTrucker} onChange={e => setEditForm({ ...editForm, kwatosTrucker: e.target.value })} placeholder="Trucker company" />
-                                    <Input label="Customs Status" value={editForm.kwatosCustomsStatus} onChange={e => setEditForm({ ...editForm, kwatosCustomsStatus: e.target.value })} placeholder="e.g. Release" />
-                                    <Input label="Approval No." value={editForm.kwatosApprovalNo} onChange={e => setEditForm({ ...editForm, kwatosApprovalNo: e.target.value })} placeholder="e.g. 26MBATR805661313" />
-                                </div>
-                                <div style={{ marginTop: "0.25rem" }}>
-                                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "hsl(var(--text-secondary))", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: "0.35rem" }}>Commodity Description</label>
-                                    <textarea
-                                        value={editForm.kwatosCommodity}
-                                        onChange={e => setEditForm({ ...editForm, kwatosCommodity: e.target.value })}
-                                        rows={2}
-                                        placeholder="e.g. Medical, surgical or laboratory sterilisers."
-                                        style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "6px", border: "1px solid hsl(var(--border))", background: "hsl(var(--surface-2))", color: "hsl(var(--text-primary))", fontSize: "0.88rem", resize: "vertical" }}
-                                    />
-                                </div>
-                            </FormSection>
+                    {/* SECTION 6: Internal Remarks */}
+                    <FormSection title="Internal Remarks / Notes">
+                        <Textarea
+                            label="Remarks"
+                            value={editForm.remarks}
+                            onChange={e => setEditForm({ ...editForm, remarks: e.target.value })}
+                            rows={3}
+                            placeholder="Optional remarks or internal notes…"
+                        />
+                    </FormSection>
 
-                            {/* SECTION 5: Interchange & Return */}
-                            <FormSection title="Interchange & Empty Return">
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
-                                    <Input label="Interchange Ref No." value={editForm.interchangeRef} onChange={e => setEditForm({ ...editForm, interchangeRef: e.target.value })} placeholder="e.g. IC-2026-98201" />
-                                    <Input label="Return Depot" value={editForm.interchangeDepot} onChange={e => setEditForm({ ...editForm, interchangeDepot: e.target.value })} placeholder="e.g. Maersk Depot - Shimanzi" />
-                                    <Input label="Return Date" type="date" value={editForm.interchangeReturnDate} onChange={e => setEditForm({ ...editForm, interchangeReturnDate: e.target.value })} />
-                                    <Input label="Container Condition" value={editForm.interchangeCondition} onChange={e => setEditForm({ ...editForm, interchangeCondition: e.target.value })} placeholder="e.g. CLEAN / GOOD" />
-                                    <div>
-                                        <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "hsl(var(--text-secondary))", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: "0.35rem" }}>Interchange Status</label>
-                                        <select
-                                            value={editForm.interchangeStatus}
-                                            onChange={e => setEditForm({ ...editForm, interchangeStatus: e.target.value })}
-                                            style={{ width: "100%", height: "40px", padding: "0 0.75rem", borderRadius: "6px", border: "1px solid hsl(var(--border))", background: "hsl(var(--surface-2))", color: "hsl(var(--text-primary))", fontSize: "0.88rem" }}
-                                        >
-                                            <option value="">Select status…</option>
-                                            <option value="PENDING">Pending</option>
-                                            <option value="INTERCHANGE_RECEIVED">Interchange Received</option>
-                                            <option value="RETURNED">Returned</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </FormSection>
-
-                            {/* SECTION 6: Notes */}
-                            <FormSection title="Internal Remarks / Notes">
-                                <textarea
-                                    value={editForm.remarks}
-                                    onChange={e => setEditForm({ ...editForm, remarks: e.target.value })}
-                                    rows={3}
-                                    placeholder="Optional remarks or internal notes…"
-                                    style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "6px", border: "1px solid hsl(var(--border))", background: "hsl(var(--surface-2))", color: "hsl(var(--text-primary))", fontSize: "0.88rem", resize: "vertical" }}
-                                />
-                            </FormSection>
-
-                            {/* Actions */}
-                            <div style={{ display: "flex", gap: "1rem", paddingTop: "0.5rem", borderTop: "1px solid hsl(var(--border))" }}>
-                                <Button type="button" variant="secondary" onClick={() => setShowEditDrawer(false)} style={{ flex: 1 }}>Cancel</Button>
-                                <Button type="submit" loading={saving} style={{ flex: 2 }}>Save All Changes</Button>
-                            </div>
-
-                        </form>
-                    </div>
-                </div>
-            )}
+                </form>
+            </Slideover>
         </div>
     );
 }

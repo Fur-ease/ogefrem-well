@@ -227,7 +227,7 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
 
     const openEditContainer = (container?: any) => {
         if (container) {
-            setEditingContainer({ ...container });
+            setEditingContainer({ ...container, driverIdNumber: container.driverIdNumber || "" });
         } else {
             setEditingContainer({
                 containerNumber: "",
@@ -237,6 +237,7 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
                 gateOutDate: "",
                 truckDetails: "",
                 driverName: "",
+                driverIdNumber: "",
                 status: "In Transit",
                 remarks: ""
             });
@@ -257,6 +258,10 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
         }
         if (uType === "grouping_lcl" && !editingContainer?.lclReferenceNumber) {
             toast.error("N° Réf Conteneur is required for Grouping LCL units");
+            return;
+        }
+        if (editingContainer?.driverName?.trim() && !editingContainer?.driverIdNumber?.trim()) {
+            toast.error("Driver ID Number is required when a Driver Name is assigned.");
             return;
         }
         setSaving(true);
@@ -468,7 +473,7 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
                         )}
                         <Button onClick={() => setShowUpdateDrawer(true)} size="sm" icon={<Edit3 size={13} />}>Update</Button>
                         <Button onClick={() => setShowEventDrawer(true)} variant="secondary" size="sm" icon={<Plus size={13} />}>Log Event</Button>
-                        <Button onClick={() => setShowExceptionDrawer(true)} variant="danger" size="sm" icon={<ShieldAlert size={13} />}>Flag Exception</Button>
+                        {/* <Button onClick={() => setShowExceptionDrawer(true)} variant="danger" size="sm" icon={<ShieldAlert size={13} />}>Flag Exception</Button> */}
                         <Button onClick={() => setShowDocModal(true)} variant="ghost" size="sm" icon={<Upload size={13} />}>Upload Doc</Button>
                     </div>
                 </div>
@@ -994,17 +999,17 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
                 </form>
             </Modal>
 
-            {/* ── MODAL: Container Update ──────────────────────────────── */}
-            <Modal
+            {/* ── DRAWER: Container Update (Addendum 6 Standard) ──────────────────────────────── */}
+            <Drawer
                 open={showContainerModal}
                 onClose={() => setShowContainerModal(false)}
-                title={editingContainer?.id ? "Update Container Tracking" : "Add Container to Shipment"}
-                subtitle={editingContainer?.containerNumber ? `Container #${editingContainer.containerNumber}` : "Register new container"}
-                maxWidth="560px"
+                title={editingContainer?.id ? "Update Cargo Unit Tracking" : "Add Cargo Unit to Shipment"}
+                subtitle={editingContainer?.containerNumber ? `Unit #${editingContainer.containerNumber} · ${shipment?.refNumber}` : `New Unit · ${shipment?.refNumber}`}
+                width="560px"
                 footer={
                     <>
                         <Button type="button" variant="ghost" onClick={() => setShowContainerModal(false)}>Cancel</Button>
-                        <Button type="submit" form="container-update-form" loading={saving}>Save Container Details</Button>
+                        <Button type="submit" form="container-update-form" loading={saving}>Save Cargo Unit Details</Button>
                     </>
                 }
             >
@@ -1066,6 +1071,7 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
                                 />
                                 <Input
                                     label="Seal Number"
+                                    mono
                                     value={editingContainer?.sealNumber || ""}
                                     onChange={e => setEditingContainer({ ...editingContainer, sealNumber: e.target.value.toUpperCase() })}
                                     placeholder="e.g. SL482910"
@@ -1085,6 +1091,7 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
                             <Input
                                 label="N° Réf Conteneur *"
                                 required
+                                mono
                                 value={editingContainer?.lclReferenceNumber || ""}
                                 onChange={e => setEditingContainer({ ...editingContainer, lclReferenceNumber: e.target.value.toUpperCase() })}
                                 placeholder="e.g. LCL-2026-0417"
@@ -1118,6 +1125,31 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
                         </FormRow>
                     </FormSection>
 
+                    <FormSection title="Trucking & Driver Assignment">
+                        <Input
+                            label="Truck Details (Reg. Plate / Trailer)"
+                            value={editingContainer?.truckDetails || ""}
+                            onChange={e => setEditingContainer({ ...editingContainer, truckDetails: e.target.value })}
+                            placeholder="e.g. KCA 123X / Trailer 99"
+                        />
+                        <FormRow>
+                            <Input
+                                label="Driver Name"
+                                value={editingContainer?.driverName || ""}
+                                onChange={e => setEditingContainer({ ...editingContainer, driverName: e.target.value })}
+                                placeholder="e.g. John Doe"
+                            />
+                            <Input
+                                label="Driver ID / Licence No."
+                                value={editingContainer?.driverIdNumber || ""}
+                                onChange={e => setEditingContainer({ ...editingContainer, driverIdNumber: e.target.value })}
+                                placeholder="e.g. DL-28491-KE"
+                                required={!!editingContainer?.driverName?.trim()}
+                                error={editingContainer?.driverName?.trim() && !editingContainer?.driverIdNumber?.trim() ? "Driver ID is required when Driver Name is set" : undefined}
+                            />
+                        </FormRow>
+                    </FormSection>
+
                     <FormSection title="Logistics & Movement Tracking">
                         <FormRow>
                             <Input
@@ -1131,20 +1163,6 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
                                 type="date"
                                 value={fmtInputDate(editingContainer?.gateOutDate)}
                                 onChange={e => setEditingContainer({ ...editingContainer, gateOutDate: e.target.value })}
-                            />
-                        </FormRow>
-                        <FormRow>
-                            <Input
-                                label="Truck Details"
-                                value={editingContainer?.truckDetails || ""}
-                                onChange={e => setEditingContainer({ ...editingContainer, truckDetails: e.target.value })}
-                                placeholder="e.g. KCA 123X / Trailer 99"
-                            />
-                            <Input
-                                label="Driver Name"
-                                value={editingContainer?.driverName || ""}
-                                onChange={e => setEditingContainer({ ...editingContainer, driverName: e.target.value })}
-                                placeholder="e.g. John Doe"
                             />
                         </FormRow>
                         <Select
@@ -1168,7 +1186,7 @@ export default function WellShipmentWorkspacePage({ params }: { params: Promise<
                         />
                     </FormSection>
                 </form>
-            </Modal>
+            </Drawer>
         </div>
     );
 }
